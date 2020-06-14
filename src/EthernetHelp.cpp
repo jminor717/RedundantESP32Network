@@ -1,7 +1,7 @@
 #include "../lib/picohttpparser/picohttpparser.h"
 #include <Arduino.h>
 #include <Ethernet.h>
-#include <EthernetHelp.h>
+#include <EthernetHelp.hpp>
 
 const char *loginIndex =
     "<form name='loginForm'>"
@@ -175,4 +175,5 @@ int processOneTimeConnection(EthernetClient client, size_t bytes, uint8_t *ptr, 
     // close the connection:
     client.stop();
     Serial.println("client disconnected");
+    return pret;
 }
