@@ -3,6 +3,7 @@
 #include "../lib/picohttpparser/picohttpparser.h"
 #include <EthernetHelp.hpp>
 #include <spihelp.hpp>
+#include <TempHelp.hpp>
 
 //pin deffinitions
 #define PrimarySPI_MISO 19
@@ -17,6 +18,9 @@
 
 #define Adxl1SS 15
 #define Adxl2SS 32
+
+#define AZ_Temp_Line 4
+#define EL_Temp_Line 17
 
 //ethernet data
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
@@ -33,6 +37,10 @@ ADXL345_SPI *accSPI1;
 ADXL345_SPI *accSPI2;
 ADXLbuffer acc1buffer(1600); //; //= ADXLbuffer(1600);
 ADXLbuffer acc2buffer(1600);
+
+Tempsensor AZTempSense(AZ_Temp_Line);
+Tempsensor ELTempSense(EL_Temp_Line);
+
 void setup()
 {
     SecondarySPI = new SPIClass(HSPI);
@@ -115,12 +123,16 @@ void loop()
     {
         acc2buffer.buffer.push(buffer.buffer[i]);
     }
-    char data[30];
-    sprintf(data, "%d, %d, %d,    1    %d", acc1buffer.buffer.front().x, acc1buffer.buffer.front().y, acc1buffer.buffer.front().z, acc1buffer.buffer.size());
+    char data2[30];
+    sprintf(data2, "%d, %d, %d,    1    %d", acc1buffer.buffer.front().x, acc1buffer.buffer.front().y, acc1buffer.buffer.front().z, acc1buffer.buffer.size());
     acc1buffer.buffer.pop();
-    Serial.println(data);
-    sprintf(data, "%d, %d, %d,    2    %d", acc2buffer.buffer.front().x, acc2buffer.buffer.front().y, acc2buffer.buffer.front().z, acc2buffer.buffer.size());
+    Serial.println(data2);
+    sprintf(data2, "%d, %d, %d,    2    %d", acc2buffer.buffer.front().x, acc2buffer.buffer.front().y, acc2buffer.buffer.front().z, acc2buffer.buffer.size());
     acc2buffer.buffer.pop();
-    Serial.println(data);
+    Serial.println(data2);
+    Serial.println(ELTempSense.read());
+    Serial.println(AZTempSense.read());
     delay(20);
+
+
 }
