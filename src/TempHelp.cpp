@@ -15,7 +15,7 @@ int16_t Tempsensor::read()
     {
         if (!this->sensor.search(addr))
         {
-            connected = false;
+            this->connected = false;
             Serial.println("No more addresses.");
             this->sensor.reset_search();
             delay(250);
@@ -26,7 +26,7 @@ int16_t Tempsensor::read()
             if (OneWire::crc8(addr, 7) != addr[7])
             {
                 Serial.println("CRC is not valid!");
-                connected = false;
+                this->connected = false;
                 return 0;
             }else{
                 switch (addr[0])
@@ -45,12 +45,19 @@ int16_t Tempsensor::read()
                     break;
                 default:
                     Serial.println("Device is not a DS18x20 family device.");
-                    connected = false;
+                    this->connected = false;
                     return 0;
                 }
-                connected = true;
+                this->connected = true;
             }
         }
+        Serial.print("ROM =");
+        for (i = 0; i < 8; i++)
+        {
+            Serial.write(' ');
+            Serial.print(addr[i], HEX);
+        }
+        Serial.println();
     }
 
     this->sensor.reset();
@@ -63,13 +70,21 @@ int16_t Tempsensor::read()
     this->sensor.select(addr);
     this->sensor.write(0xBE); // Read Scratchpad
 
+    Serial.print("  Data = ");
+    Serial.print(" ");
     for (i = 0; i < 9; i++)
     { // we need 9 bytes
         data[i] = this->sensor.read();
+        Serial.print(data[i], HEX);
+        Serial.print(" ");
     }
+    Serial.print(" CRC=");
+    Serial.print(OneWire::crc8(data, 8), HEX);
+    Serial.println();
 
     if (OneWire::crc8(data, 8) != data[8]){// this will happen if there are bit errors durring data transmition so reject the data
         Serial.println(" CRC on temp read was incoreect");
+        this->connected = false;
         return 0;
     }
 

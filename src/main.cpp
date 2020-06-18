@@ -126,11 +126,11 @@ void loop()
     char data2[30];
     sprintf(data2, "%d, %d, %d,    1    %d", acc1buffer.buffer.front().x, acc1buffer.buffer.front().y, acc1buffer.buffer.front().z, acc1buffer.buffer.size());
     acc1buffer.buffer.pop();
-    Serial.println(data2);
+  //  Serial.println(data2);
     sprintf(data2, "%d, %d, %d,    2    %d", acc2buffer.buffer.front().x, acc2buffer.buffer.front().y, acc2buffer.buffer.front().z, acc2buffer.buffer.size());
     acc2buffer.buffer.pop();
-    Serial.println(data2);
-    Serial.println(ELTempSense.read());
+   // Serial.println(data2);
+  //  Serial.println(ELTempSense.read());
     Serial.println(AZTempSense.read());
     delay(20);
 
