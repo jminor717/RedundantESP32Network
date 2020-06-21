@@ -1,3 +1,19 @@
+    /* in Server.h change line below  
+    virtual void begin(uint16_t port=0) =0;
+    virtual void begin() = 0;
+    in lib\picohttpparser\test.c remove line
+    #include "picotest/picotest.h"
+*/
+
+/*
+always keep a udp server running listening for broadcasts
+and tcp server for direct connections
+at startup broadcast udp to share this ip adress, until a tcp coection is made 
+keep udp brodcasting for another 5 seconds to ensure all esp32 get the packets
+
+*/
+
+
 #include <Arduino.h>
 #include <Ethernet.h>
 #include "../lib/picohttpparser/picohttpparser.h"
@@ -22,13 +38,27 @@
 #define AZ_Temp_Line 4
 #define EL_Temp_Line 17
 
+
+
+bool isMaster = false;
+bool poolActive = false;
+
+
 //ethernet data
+//byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+//IPAddress ip(192, 168, 0, 177);
+IPAddress gateway(192, 168, 0, 1);
+//IPAddress subnet(255, 255, 255, 0);
+unsigned int UDPport = 5005;           // local port to listen for UDP packets
+
+IPAddress UDPServer(192, 168, 0, 255); // destination device server
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress ip(169, 254, 205, 177);
 IPAddress subnet(255, 255, 0, 0);
 const int ethernetPort = 1602;
 //ethernet server
 EthernetServer server(ethernetPort);
+EthernetClient client2();
 //spi classes
 SPIClass *PrimarySPI = NULL;   // primary spi buss, used as the default for most libraries
 SPIClass *SecondarySPI = NULL; // secondary, mostly unused by library code
@@ -59,7 +89,7 @@ void setup()
     //SCLK = 18, MISO = 19, MOSI = 23, SS = 5
     Ethernet.init(PrimarySPI_SS);
     // initialize the ethernet device
-    Ethernet.begin(mac, ip, subnet);
+    Ethernet.begin(mac, ip, gateway, gateway, subnet);
 
     // Open serial communications and wait for port to open:
     Serial.begin(115200);
