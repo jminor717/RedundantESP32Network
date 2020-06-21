@@ -2,14 +2,13 @@
 #include <Ethernet.h>
 #include <EthernetUdp.h> // UDP library from: bjoern@cs.stanford.edu 12/30/2008
 
-
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
-byte mac[] = {
-    0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-IPAddress ip(192, 168, 0, 177);
-IPAddress gateway(192, 168, 0, 1);
-IPAddress subnet(255, 255, 255, 0);
+//byte mac[] = {
+ //   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+//IPAddress ip(192, 168, 0, 177);
+//IPAddress gateway(192, 168, 0, 1);
+//IPAddress subnet(255, 255, 255, 0);
 
 unsigned int UDPport = 5005;           // local port to listen for UDP packets
 IPAddress UDPServer(192, 168, 0, 255); // destination device server
@@ -38,8 +37,6 @@ int UDPCount = 0;
 boolean packetOut = false;
 
 unsigned int udpCount = 0;
-
-
 
 // send an NTP request to the time server at the given address
 void sendUDPpacket(IPAddress &address)
@@ -105,18 +102,14 @@ void getUDPpacket()
         packetOut = false;
     }
 }
-
+/*
 void setup()
 {
-
-    delay(2000);
-
     currentTime = millis();
     secondTime = currentTime;
+}*/
 
-}
-
-void loop()
+void CheckUDPServer()
 {
     // if there's data available, read a packet
     int packetSize = Udp.parsePacket();
@@ -153,37 +146,35 @@ void loop()
         Udp.write(ReplyBuffer);
         Udp.endPacket();
     }
-    delay(10);
+}
 
-
-    currentTime = millis();
-
+void sendUDPBroadcast()
+{
+    //currentTime = millis();
     getUDPpacket();
-
     //
-    if (currentTime - secondTime > msPerSecond)
+    //if (currentTime - secondTime > msPerSecond)
+    //{
+    byte rtnVal = Ethernet.maintain();
+    switch (rtnVal)
     {
-        byte rtnVal = Ethernet.maintain();
-        switch (rtnVal)
-        {
-        case 1:
-            Serial.println(F("\r\nDHCP renew fail"));
-            break;
-        case 2:
-            Serial.println(F("\r\nDHCP renew ok"));
-            break;
-        case 3:
-            Serial.println(F("\r\nDHCP rebind fail"));
-            break;
-        case 4:
-            Serial.println(F("\r\nDHCP rebind ok"));
-            break;
-        }
-
-        Serial.println(F("\r\nUDP send"));
-        sendUDPpacket(UDPServer); // send an NTP packet to a time server
-        packetOut = true;
-        secondTime += msPerSecond;
-        delay(500);
+    case 1:
+        Serial.println(F("\r\nDHCP renew fail"));
+        break;
+    case 2:
+        Serial.println(F("\r\nDHCP renew ok"));
+        break;
+    case 3:
+        Serial.println(F("\r\nDHCP rebind fail"));
+        break;
+    case 4:
+        Serial.println(F("\r\nDHCP rebind ok"));
+        break;
     }
+
+    Serial.println(F("\r\nUDP send"));
+    sendUDPpacket(UDPServer); // send an NTP packet to a time server
+    packetOut = true;
+    //    secondTime += msPerSecond;
+    //}
 }

@@ -49,9 +49,9 @@ bool poolActive = false;
 //IPAddress ip(192, 168, 0, 177);
 IPAddress gateway(192, 168, 0, 1);
 //IPAddress subnet(255, 255, 255, 0);
-unsigned int UDPport = 5005;           // local port to listen for UDP packets
+//unsigned int UDPport = 5005;           // local port to listen for UDP packets
 
-IPAddress UDPServer(192, 168, 0, 255); // destination device server
+//IPAddress UDPServer(192, 168, 0, 255); // destination device server
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress ip(169, 254, 205, 177);
 IPAddress subnet(255, 255, 0, 0);
@@ -67,6 +67,7 @@ ADXL345_SPI *accSPI1;
 ADXL345_SPI *accSPI2;
 ADXLbuffer acc1buffer(1600); //; //= ADXLbuffer(1600);
 ADXLbuffer acc2buffer(1600);
+ADXLbuffer acc3buffer(1600);
 
 Tempsensor AZTempSense(AZ_Temp_Line);
 Tempsensor ELTempSense(EL_Temp_Line);

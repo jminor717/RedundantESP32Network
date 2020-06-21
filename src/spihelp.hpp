@@ -27,6 +27,26 @@ public:
     void init();
 };
 
+
+class I2C_Device {
+    uint32_t spi_clock_speed = 400000;
+};
+
+class ADXL345_I2C : public I2C_Device
+{
+public:
+    static const uint8_t ADXL345_BW_RATE = 0x2C;
+    static const uint8_t ADXL345_POWER_CTL = 0x2D;
+    static const uint8_t ADXL345_INT_ENABLE = 0x2E;
+    static const uint8_t ADXL345_INT_MAP = 0X2F;
+    static const uint8_t ADXL345_INT_SOURCE = 0x30;
+    static const uint8_t ADXL345_FIFO_CTL = 0x38;
+    static const uint8_t ADXL345_DATA_FORMAT = 0x31;
+    static const uint8_t FIFO_STATUS = 0x39;
+    ADXL345_I2C(SPIClass *, uint8_t);
+    void init();
+};
+
 struct acc
 {
     short x;
