@@ -2,22 +2,21 @@ var dgram = require('dgram');
 var server = dgram.createSocket("udp4");
 server.bind(function () {
     server.setBroadcast(true)
-    server.setMulticastTTL(128);
-    setInterval(broadcast, 1000);
+    server.setMulticastTTL(255);
+    setInterval(broadcastNew, 1000);
 });
 
-function broadcast() {
-    var message = new Buffer("192.168.0.70 : ESP32");
-    server.send(message, 0, message.length, 5005, "192.168.0.255");
+
+
+function broadcastNew() {
+    var message = new Buffer("169.254.205.47::ESP32");
+    server.send(message, 0, message.length, 8888, "169.254.255.255");//"169.254.205.177"
     console.log("Sent " + message + " to the wire...");
 }
 
 
 
-
-
-
-const PORT = 5005;
+const PORT = 8888;
 const MULTICAST_ADDR = "233.255.255.255";// "255.255.255.0";//
 //192.168.0.70
 
@@ -29,7 +28,7 @@ socket.bind(PORT);
 
 socket.on("listening", function () {
     socket.addMembership(MULTICAST_ADDR);
-    setInterval(sendMessage, 500);
+    //setInterval(sendMessage, 5000);
     const address = socket.address();
     console.log(
         `UDP socket listening on ${address.address}:${address.port} pid: ${
