@@ -1,6 +1,28 @@
 #include <SPI.h>
 #include <Arduino.h>
 #include <spihelp.hpp>
+#include <map>
+
+#define AdxlInt_AZ 25
+#define AdxlInt_EL 26
+#define AdxlInt_Ballence 27
+
+std::map<int, ADXL345_SPI *> callbacks;
+
+void IRAM_ATTR interruptCallbackAZ()
+{
+    callbacks[AdxlInt_AZ]->interruptCallback();
+}
+
+void IRAM_ATTR interruptCallbackEL()
+{
+    callbacks[AdxlInt_EL]->interruptCallback();
+}
+
+void IRAM_ATTR interruptCallbackBallence()
+{
+    callbacks[AdxlInt_Ballence]->interruptCallback();
+}
 
 ADXL345_SPI::ADXL345_SPI(SPIClass *bus, uint8_t csLine, uint8_t inturuptLine)
 {
@@ -8,7 +30,25 @@ ADXL345_SPI::ADXL345_SPI(SPIClass *bus, uint8_t csLine, uint8_t inturuptLine)
     this->cs_Line = csLine;
     this->interruptPin = inturuptLine;
     pinMode(this->interruptPin, INPUT_PULLUP);
-    attachInterrupt(this->interruptPin, interruptCallback, FALLING);
+    //callbacks[interruptPin] = this->interruptCallback();
+    callbacks[interruptPin] = this;
+    if (inturuptLine == AdxlInt_AZ)
+    {
+        attachInterrupt(this->interruptPin, interruptCallbackAZ, RISING);
+    }
+    if (inturuptLine == AdxlInt_EL)
+    {
+        attachInterrupt(this->interruptPin, interruptCallbackEL, RISING);
+    }
+    if (inturuptLine == AdxlInt_Ballence)
+    {
+        attachInterrupt(this->interruptPin, interruptCallbackBallence, RISING);
+    }
+}
+
+void IRAM_ATTR ADXL345_SPI::interruptCallback()
+{
+    this->bufferFull = true;
 }
 
 void ADXL345_SPI::init()
@@ -33,11 +73,6 @@ void ADXL345_SPI::init()
     spiWriteSingleADXL(*this, ADXL345_INT_ENABLE, (uint8_t)0b00000011); // water mark and overrun intureupt enable
     delayMicroseconds(20);
     spiWriteSingleADXL(*this, ADXL345_INT_MAP, (uint8_t)0); // map interrupts to INT1
-}
-
-void IRAM_ATTR interruptCallback()
-{
-    //bufferFull = true;
 }
 
 void spiWriteSingleADXL(SPI_DEVICE dev, uint8_t adr, uint8_t daa)

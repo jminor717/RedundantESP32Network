@@ -1,4 +1,5 @@
-/* in Server.h change line below  
+/*  the libraries used have some errors that will need changes
+    in Server.h change line below  
     virtual void begin(uint16_t port=0) =0;
     virtual void begin() = 0;
     in lib\picohttpparser\test.c remove line
@@ -234,30 +235,51 @@ void loop()
         }
     }
 
- 
-    // Serial.println(data2);
-    
-    if (measureAZTemp)
-    {
-        measureAZTemp = false;
+     // Serial.println(data2);accSPI_Ballence
+    if (accSPI_AZ->bufferFull){
+        accSPI_AZ->bufferFull = false;
         accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_AZ);
         for (size_t i = 0; i < buffer.lenght; i++)
         {
             acc1buffer.buffer.push(buffer.buffer[i]);
         }
-        buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_EL);
+        char data2[30];
+        sprintf(data2, "%d, %d, %d,    1    %d", acc1buffer.buffer.front().x, acc1buffer.buffer.front().y, acc1buffer.buffer.front().z, acc1buffer.buffer.size());
+        acc1buffer.buffer.pop();
+    }
+    if (accSPI_EL->bufferFull)
+    {
+        accSPI_EL->bufferFull = false;
+
+        accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_EL);
         for (size_t i = 0; i < buffer.lenght; i++)
         {
             acc2buffer.buffer.push(buffer.buffer[i]);
         }
         char data2[30];
-        sprintf(data2, "%d, %d, %d,    1    %d", acc1buffer.buffer.front().x, acc1buffer.buffer.front().y, acc1buffer.buffer.front().z, acc1buffer.buffer.size());
-        acc1buffer.buffer.pop();
         //  Serial.println(data2);
         sprintf(data2, "%d, %d, %d,    2    %d", acc2buffer.buffer.front().x, acc2buffer.buffer.front().y, acc2buffer.buffer.front().z, acc2buffer.buffer.size());
         acc2buffer.buffer.pop();
-        //Serial.println(AZTempSense.read());
     }
+    if (accSPI_Ballence->bufferFull)
+    {
+        accSPI_Ballence->bufferFull = false;
+        accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_Ballence);
+        for (size_t i = 0; i < buffer.lenght; i++)
+        {
+            acc3buffer.buffer.push(buffer.buffer[i]);
+        }
+        char data2[30];
+        sprintf(data2, "%d, %d, %d,    1    %d", acc3buffer.buffer.front().x, acc3buffer.buffer.front().y, acc3buffer.buffer.front().z, acc3buffer.buffer.size());
+        acc3buffer.buffer.pop();
+    }
+
+        if (measureAZTemp)
+        {
+            measureAZTemp = false;
+
+            //Serial.println(AZTempSense.read());
+        }
     if (measureELTemp)
     {
         measureELTemp = false;

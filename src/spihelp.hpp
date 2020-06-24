@@ -27,9 +27,10 @@ public:
     uint8_t interruptPin;
     ADXL345_SPI(SPIClass *, uint8_t, uint8_t);
     void init();
+    void IRAM_ATTR interruptCallback();
 };
 
-void IRAM_ATTR interruptCallback();
+
 
 struct acc
 {
@@ -98,13 +99,23 @@ private:
     std::array<char[sizeof(T)], N> array_;
 };
 
+//push data from acc measurement thread pop in main thread use atomic bools to signal between threads
 struct ADXLbuffer
 {
     ADXLbuffer(size_t);
     std::atomic<bool> writing;
     std::atomic<bool> reading;
+    std::atomic<bool> needsEmptied{false};
     size_t maxsize = 1600;
     std::queue<acc, CyclicArray<acc, 1600>> buffer;
+};
+
+//use in acc measurement thread only for when ADXLbuffer is being read by main thread
+struct ADXLminibuffer
+{
+    ADXLminibuffer(size_t);
+    size_t maxsize = 160;
+    std::queue<acc, CyclicArray<acc, 160>> buffer;
 };
 
 void spiWriteSingleADXL(SPI_DEVICE, uint8_t, uint8_t);
