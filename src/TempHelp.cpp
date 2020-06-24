@@ -10,10 +10,35 @@ int16_t Tempsensor::read()
 {
     byte i;
     byte data[12];
-    float celsius, fahrenheit;
+
+    if(this->connected){
+        this->sensor.select(this->addr);
+        this->sensor.write(0xBE); // Read Scratchpad
+
+        Serial.print("  Data = ");
+        Serial.print(" ");
+        for (i = 0; i < 9; i++)
+        { // we need 9 bytes
+            data[i] = this->sensor.read();
+            Serial.print(data[i], HEX);
+            Serial.print(" ");
+        }
+        Serial.print(" CRC=");
+        Serial.print(OneWire::crc8(data, 8), HEX);
+        Serial.println();
+
+        if (OneWire::crc8(data, 8) != data[8])
+        { // this will happen if there are bit errors durring data transmition so reject the data
+            Serial.println(" CRC on temp read was incoreect");
+            this->connected = false;
+            return 0;
+        }
+    }
+
+
     if (this->addr[0] == 0x00 || !connected)
     {
-        if (!this->sensor.search(addr))
+        if (!this->sensor.search(this->addr))
         {
             this->connected = false;
             Serial.println("No more addresses.");
@@ -23,13 +48,13 @@ int16_t Tempsensor::read()
         }
         else
         {
-            if (OneWire::crc8(addr, 7) != addr[7])
+            if (OneWire::crc8(this->addr, 7) != this->addr[7])
             {
                 Serial.println("CRC is not valid!");
                 this->connected = false;
                 return 0;
             }else{
-                switch (addr[0])
+                switch (this->addr[0])
                 {
                 case 0x10:
                     Serial.println("  Chip = DS18S20"); // or old DS1820
@@ -55,39 +80,17 @@ int16_t Tempsensor::read()
         for (i = 0; i < 8; i++)
         {
             Serial.write(' ');
-            Serial.print(addr[i], HEX);
+            Serial.print(this->addr[i], HEX);
         }
         Serial.println();
     }
 
     this->sensor.reset();
-    this->sensor.select(addr);
-    this->sensor.write(0x44, 1); // start conversion, with parasite power on at the end
+    this->sensor.select(this->addr);
+    this->sensor.write(0x44); // start conversion, with parasite power on at the end , 1
 
-    delay(1000); // maybe 750ms is enough, maybe not
+    //delay(1000); // maybe 750ms is enough, maybe not
     // we might do a ds.depower() here, but the reset will take care of it.
-
-    this->sensor.select(addr);
-    this->sensor.write(0xBE); // Read Scratchpad
-
-    Serial.print("  Data = ");
-    Serial.print(" ");
-    for (i = 0; i < 9; i++)
-    { // we need 9 bytes
-        data[i] = this->sensor.read();
-        Serial.print(data[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.print(" CRC=");
-    Serial.print(OneWire::crc8(data, 8), HEX);
-    Serial.println();
-
-    if (OneWire::crc8(data, 8) != data[8]){// this will happen if there are bit errors durring data transmition so reject the data
-        Serial.println(" CRC on temp read was incoreect");
-        this->connected = false;
-        return 0;
-    }
-
 
     // Convert the data to actual temperature
     // because the result is a 16 bit signed integer, it should
@@ -116,6 +119,8 @@ int16_t Tempsensor::read()
                             //// default is 12 bit resolution, 750 ms conversion time
     }
     return raw;
+    /*
+    float celsius, fahrenheit;
     celsius = (float)raw / 16.0;
     fahrenheit = celsius * 1.8 + 32.0;
     Serial.print("  Temperature = ");
@@ -123,4 +128,5 @@ int16_t Tempsensor::read()
     Serial.print(" Celsius, ");
     Serial.print(fahrenheit);
     Serial.println(" Fahrenheit");
+    */
 }

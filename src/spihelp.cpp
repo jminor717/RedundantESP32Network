@@ -1,12 +1,14 @@
 #include <SPI.h>
 #include <Arduino.h>
 #include <spihelp.hpp>
-#include <array>
 
-ADXL345_SPI::ADXL345_SPI(SPIClass *bus, uint8_t csLine)
+ADXL345_SPI::ADXL345_SPI(SPIClass *bus, uint8_t csLine, uint8_t inturuptLine)
 {
-    Buss = bus;
-    cs_Line = csLine;
+    this->Buss = bus;
+    this->cs_Line = csLine;
+    this->interruptPin = inturuptLine;
+    pinMode(this->interruptPin, INPUT_PULLUP);
+    attachInterrupt(this->interruptPin, interruptCallback, FALLING);
 }
 
 void ADXL345_SPI::init()
@@ -26,11 +28,16 @@ void ADXL345_SPI::init()
     delayMicroseconds(20);
     spiWriteSingleADXL(*this, ADXL345_FIFO_CTL, (uint8_t)0);
     delayMicroseconds(20);
-    spiWriteSingleADXL(*this, ADXL345_FIFO_CTL, (uint8_t)0b10111000); // (10|stream mode) (1|triger to INT2) (11000|trigger at 24 samples)
+    spiWriteSingleADXL(*this, ADXL345_FIFO_CTL, (uint8_t)0b10111000); // (10|stream mode) (1|triger to INT1) (11000|trigger at 24 samples)
     delayMicroseconds(20);
     spiWriteSingleADXL(*this, ADXL345_INT_ENABLE, (uint8_t)0b00000011); // water mark and overrun intureupt enable
     delayMicroseconds(20);
     spiWriteSingleADXL(*this, ADXL345_INT_MAP, (uint8_t)0); // map interrupts to INT1
+}
+
+void IRAM_ATTR interruptCallback()
+{
+    //bufferFull = true;
 }
 
 void spiWriteSingleADXL(SPI_DEVICE dev, uint8_t adr, uint8_t daa)
@@ -85,15 +92,13 @@ accbuffer emptyAdxlBuffer(SPI_DEVICE dev)
         accx.y = (short)((dat2[4] << 8) + (dat2[3]));
         accx.z = (short)((dat2[6] << 8) + (dat2[5]));
         buf.buffer[v] = accx;
-        delayMicroseconds(3);//minimum time between end of last read and start of next read is 5 us,
+        delayMicroseconds(3); //minimum time between end of last read and start of next read is 5 us,
         //testing on an osciloxscope showed an extra 1 us on each side of the high pulse
     }
     digitalWrite(dev.cs_Line, HIGH);
     dev.Buss->endTransaction();
     return buf;
 }
-
-
 
 ADXLbuffer::ADXLbuffer(size_t len)
 {

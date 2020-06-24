@@ -1,32 +1,36 @@
 #include <SPI.h>
 #include <Ethernet.h>
 #include <EthernetUdp.h> // UDP library from: bjoern@cs.stanford.edu 12/30/2008
+#include <RedundantPool.hpp>
 
 // The IP address will be dependent on your local network:
-uint16_t UDPport = 8888;                 // local port to listen for UDP packets
-IPAddress UDPServer(169, 254, 255, 255); // destination device server
 
-// An EthernetUDP instance to let us send and receive packets over UDP
-EthernetUDP Udp;
 const int UDP_PACKET_SIZE = 64;
 byte packetBuffer[UDP_PACKET_SIZE] = "0";
 
-void UDPSetup()
+PoolManagment::PoolManagment(IPAddress selfadr, IPAddress adr, uint16_t port) //
 {
-    Udp.begin(UDPport);
+    this->self.address = selfadr;
+    this->UDPServer = adr;
+    this->UDPport = port;
 }
 
-void CheckUDPServer()
+void PoolManagment::UDPSetup()
+{
+    this->Udp.begin(this->UDPport);
+}
+
+void PoolManagment::CheckUDPServer()
 {
     // if there's data available, read a packet
-    int packetSize = Udp.parsePacket();
+    int packetSize = this->Udp.parsePacket();
     if (packetSize)
     {
         char packetBuffer[packetSize] = {0};
         Serial.print("Received packet of size ");
         Serial.println(packetSize);
         Serial.print("From ");
-        IPAddress remote = Udp.remoteIP();
+        IPAddress remote = this->Udp.remoteIP();
         for (int i = 0; i < 4; i++)
         {
             Serial.print(remote[i], DEC);
@@ -36,10 +40,10 @@ void CheckUDPServer()
             }
         }
         Serial.print(", port ");
-        Serial.println(Udp.remotePort());
+        Serial.println(this->Udp.remotePort());
 
         // read the packet into packetBufffer
-        Udp.read(packetBuffer, packetSize);
+        this->Udp.read(packetBuffer, packetSize);
         Serial.println("Contents:");
         for (size_t i = 0; i < packetSize; i++)
         {
@@ -50,7 +54,7 @@ void CheckUDPServer()
     }
 }
 
-void sendUDPBroadcast()
+void PoolManagment::sendUDPBroadcast()
 {
     byte rtnVal = Ethernet.maintain();
     switch (rtnVal)
@@ -68,15 +72,15 @@ void sendUDPBroadcast()
         Serial.println(F("\r\nDHCP rebind ok"));
         break;
     }
-    Udp.beginPacket(UDPServer, UDPport);
+    this->Udp.beginPacket(this->UDPServer, this->UDPport);
     String s = Ethernet.localIP().toString();
     size_t len = s.length();
-    char data[len+1] = {0};
+    char data[len + 1] = {0};
     for (int i = 0; i < len; i++)
     {
         data[i] = s.charAt(i);
     }
-    Udp.write(data);
-    Udp.write("::ESP32");
-    Udp.endPacket();
+    this->Udp.write(data);
+    this->Udp.write("::ESP32");
+    this->Udp.endPacket();
 }

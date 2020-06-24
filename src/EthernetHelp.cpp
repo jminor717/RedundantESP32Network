@@ -177,3 +177,18 @@ int processOneTimeConnection(EthernetClient client, size_t bytes, uint8_t *ptr, 
     Serial.println("client disconnected");
     return pret;
 }
+
+void sendEthernetMessage(const char * msg, size_t length, IPAddress destination)
+{
+    EthernetClient sendClient;
+    if (sendClient.connect(destination, 1602))
+    {
+        Serial.println("connected");
+        sendClient.println(msg);
+        sendClient.println();
+    }
+    else
+    {
+        Serial.println("connection failed");
+    }
+}
