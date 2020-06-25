@@ -74,7 +74,11 @@ void ADXL345_SPI::init()
     delayMicroseconds(20);
     spiWriteSingleADXL(*this, ADXL345_INT_MAP, (uint8_t)0); // map interrupts to INT1
 }
-
+/**
+ * 
+ * 
+ * @param dev
+*/
 void spiWriteSingleADXL(SPI_DEVICE dev, uint8_t adr, uint8_t daa)
 {
     dev.Buss->beginTransaction(SPISettings(dev.spi_clock_speed, MSBFIRST, dev.spi_mode)); //sdi rising, sdo falling

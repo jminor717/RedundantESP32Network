@@ -118,18 +118,19 @@ int processOneTimeConnection(EthernetClient client, size_t bytes, uint8_t *ptr, 
     {
         msg[j] = (char)ptr[j];
     }
-   // printf("%.*s\n", (int)bytes, msg);
-    printf("message is %d bytes long\n", bytes);
+    // printf("%.*s\n", (int)bytes, msg);
+    // printf("message is %d bytes long\n", bytes);
     pret = phr_parse_request(msg, bytes, &method, &method_len, &path, &path_len, &minor_version, headers, &num_headers, (size_t)0);
     //printHTTPheader(method, method_len, path, path_len, minor_version, headers, num_headers, pret, Serial);
-    if (pret == -1){// not a valid http request
-        printHTTPheader(method, method_len, path, path_len, minor_version, headers, num_headers, pret, Serial);
+    if (pret == -1)
+    { // not a valid http request
+        //printHTTPheader(method, method_len, path, path_len, minor_version, headers, num_headers, pret, Serial);
         return pret;
     }
     else if (pret == -2)
     {
-        printf("request was too large at %u bytes long\n",bytes);
-       // printf("%.*s\n", (int)bytes, msg);
+        printf("request was too large at %u bytes long\n", bytes);
+        // printf("%.*s\n", (int)bytes, msg);
         return pret;
     }
     char shortPath[path_len + 1] = {0};
@@ -178,7 +179,7 @@ int processOneTimeConnection(EthernetClient client, size_t bytes, uint8_t *ptr, 
     return pret;
 }
 
-void sendEthernetMessage(const char * msg, size_t length, IPAddress destination)
+void sendEthernetMessage(const char *msg, size_t length, IPAddress destination)
 {
     EthernetClient sendClient;
     if (sendClient.connect(destination, 1602))
@@ -192,3 +193,4 @@ void sendEthernetMessage(const char * msg, size_t length, IPAddress destination)
         Serial.println("connection failed");
     }
 }
+

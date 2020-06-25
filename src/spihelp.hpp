@@ -27,6 +27,10 @@ public:
     uint8_t interruptPin;
     ADXL345_SPI(SPIClass *, uint8_t, uint8_t);
     void init();
+    /*
+    called from interruptCallbackAZ/EL/Ballence
+    *should not be called from anywhere else
+    */
     void IRAM_ATTR interruptCallback();
 };
 

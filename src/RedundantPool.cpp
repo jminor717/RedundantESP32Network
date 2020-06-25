@@ -3,6 +3,17 @@
 #include <EthernetUdp.h> // UDP library from: bjoern@cs.stanford.edu 12/30/2008
 #include <RedundantPool.hpp>
 
+
+EthernetClient ethClient;
+
+long lastReconnectAttempt = 0;
+
+void callback(char *topic, byte *payload, unsigned int length)
+{
+    // handle message arrived
+}
+
+
 // The IP address will be dependent on your local network:
 
 const int UDP_PACKET_SIZE = 64;
@@ -44,13 +55,24 @@ void PoolManagment::CheckUDPServer()
 
         // read the packet into packetBufffer
         this->Udp.read(packetBuffer, packetSize);
-        Serial.println("Contents:");
+        //Serial.println("Contents:");
+        uint8_t sourceLenght = 0;
+        uint8_t seperatorLocation = 0;
         for (size_t i = 0; i < packetSize; i++)
         {
-            /* code */
-            Serial.print(packetBuffer[i]);
+            // Serial.print(packetBuffer[i]);
+            if (packetBuffer[i] == ':')
+                seperatorLocation++;
+            if (seperatorLocation == 0)
+            {
+                sourceLenght++;
+            }
         }
-        Serial.println("");
+        char source[sourceLenght] = {0};
+        for (size_t i = 0; i < sourceLenght; i++)
+        {
+            source[i] = packetBuffer[i];
+        }
     }
 }
 
@@ -80,7 +102,7 @@ void PoolManagment::sendUDPBroadcast()
     {
         data[i] = s.charAt(i);
     }
+    this->Udp.write("ESP32::");
     this->Udp.write(data);
-    this->Udp.write("::ESP32");
     this->Udp.endPacket();
 }

@@ -12,6 +12,14 @@ and tcp server for direct connections
 at startup broadcast udp to share this ip adress, until a tcp coection is made 
 keep udp brodcasting for another 5 seconds to ensure all esp32 get the packets
 
+vscode extension Better Comments
+*  ss
+?  ss
+!  ss
+// ss
+TODO: implament watchdog reboot
+TODO: https://medium.com/@supotsaeea/esp32-reboot-system-when-watchdog-timeout-4f3536bf17ef
+@param param
 */
 //#include <stdio.h>
 //#include <freertos/FreeRTOS.h>
@@ -26,31 +34,8 @@ keep udp brodcasting for another 5 seconds to ensure all esp32 get the packets
 #include <TempHelp.hpp>
 #include <RedundantPool.hpp>
 #include "freertos/timers.h"
-
+#include <myConfig.hpp>
 //pin deffinitions
-#define PrimarySPI_MISO 19
-#define PrimarySPI_MOSI 23
-#define PrimarySPI_SCLK 18
-#define PrimarySPI_SS 5
-
-#define SecondarySPI_MISO 12
-#define SecondarySPI_MOSI 13
-#define SecondarySPI_SCLK 14
-#define SecondarySPI_SS -1
-
-#define AdxlSS_AZ 15
-#define AdxlSS_EL 32
-#define AdxlSS_Ballence 17
-
-#define AdxlInt_AZ 25
-#define AdxlInt_EL 26
-#define AdxlInt_Ballence 27
-
-#define SDA 21
-#define SCL 22
-
-#define AZ_Temp_Line 4
-#define EL_Temp_Line 16
 
 bool isMaster = false;
 bool poolActive = false;
@@ -80,7 +65,6 @@ ADXLbuffer acc3buffer(1600);
 
 Tempsensor AZTempSense(AZ_Temp_Line);
 Tempsensor ELTempSense(EL_Temp_Line);
-
 
 //timer definitions
 #define NUM_TIMERS 5
@@ -145,18 +129,17 @@ void setup()
 
         if (xTimers[x] == NULL)
         {
-            /* The timer was not created. */
+            //* The timer was not created.
         }
         else
         {
             if (xTimerStart(xTimers[x], 0) != pdPASS)
             {
-                /* The timer could not be set into the Active
-                 state. */
+                //* The timer could not be set into the Active state.
             }
         }
     }
-    // vTaskStartScheduler();
+    ///// vTaskStartScheduler();
 
     SecondarySPI = new SPIClass(HSPI);
     //SCLK = 14, MISO = 12, MOSI = 13, SS = 15
@@ -171,11 +154,11 @@ void setup()
     accSPI_Ballence = new ADXL345_SPI(SecondarySPI, AdxlSS_Ballence, AdxlInt_Ballence);
     accSPI_Ballence->init();
     accSPI_Ballence->spi_clock_speed = 200000;
-        //acc1buffer = new ADXLbuffer(1600);
+    //acc1buffer = new ADXLbuffer(1600);
 
-        // You can use Ethernet.init(pin) to configure the CS pin
-        //SCLK = 18, MISO = 19, MOSI = 23, SS = 5
-        Ethernet.init(PrimarySPI_SS);
+    // You can use Ethernet.init(pin) to configure the CS pin
+    //SCLK = 18, MISO = 19, MOSI = 23, SS = 5
+    Ethernet.init(PrimarySPI_SS);
     // initialize the ethernet device
     Ethernet.begin(mac, fullpool.self.address, gateway, gateway, subnet);
 
@@ -212,6 +195,7 @@ void setup()
 int tem = 0;
 void loop()
 {
+    char data2[30];
     if (CheckEthernet)
     {
         CheckEthernet = false;
@@ -228,22 +212,38 @@ void loop()
                 ptr = data;
                 client.read(ptr, bytes);
                 int len = processOneTimeConnection(client, bytes, data, Serial);
-                if (len == -1)
+                if (len == -1 || len == -2)
                 {
+                    char msg[bytes];
+                    for (int j = 0; j < bytes; j++)
+                    {
+                        msg[j] = (char)data[j];
+                    }
+                    if (msg[0] == '{')
+                    {
+                        
+                    }
+                    printf("message is %d bytes long\n", bytes);
+                    Serial.println(msg);
+                    client.write("acknoledge");
+                    // give time to receive the data
+                    delay(2);
+                    // close the connection:
+                    client.stop();
                 }
             }
         }
     }
 
-     // Serial.println(data2);accSPI_Ballence
-    if (accSPI_AZ->bufferFull){
+    // Serial.println(data2);accSPI_Ballence
+    if (accSPI_AZ->bufferFull)
+    {
         accSPI_AZ->bufferFull = false;
         accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_AZ);
         for (size_t i = 0; i < buffer.lenght; i++)
         {
             acc1buffer.buffer.push(buffer.buffer[i]);
         }
-        char data2[30];
         sprintf(data2, "%d, %d, %d,    1    %d", acc1buffer.buffer.front().x, acc1buffer.buffer.front().y, acc1buffer.buffer.front().z, acc1buffer.buffer.size());
         acc1buffer.buffer.pop();
     }
@@ -256,7 +256,6 @@ void loop()
         {
             acc2buffer.buffer.push(buffer.buffer[i]);
         }
-        char data2[30];
         //  Serial.println(data2);
         sprintf(data2, "%d, %d, %d,    2    %d", acc2buffer.buffer.front().x, acc2buffer.buffer.front().y, acc2buffer.buffer.front().z, acc2buffer.buffer.size());
         acc2buffer.buffer.pop();
@@ -269,33 +268,34 @@ void loop()
         {
             acc3buffer.buffer.push(buffer.buffer[i]);
         }
-        char data2[30];
+
         sprintf(data2, "%d, %d, %d,    1    %d", acc3buffer.buffer.front().x, acc3buffer.buffer.front().y, acc3buffer.buffer.front().z, acc3buffer.buffer.size());
         acc3buffer.buffer.pop();
     }
 
-        if (measureAZTemp)
-        {
-            measureAZTemp = false;
-
-            //Serial.println(AZTempSense.read());
-        }
+    if (measureAZTemp)
+    {
+        measureAZTemp = false;
+        sprintf(data2, "AZ: %d", AZTempSense.read());
+        Serial.print(data2);
+    }
     if (measureELTemp)
     {
         measureELTemp = false;
-        //Serial.println(ELTempSense.read());
+        sprintf(data2, "   EL: %d", ELTempSense.read());
+        Serial.println(data2);
     }
 
     if (CheckUDP)
     {
         CheckUDP = false;
         //Serial.println("____________________________________recieve");
-        //fullpool.CheckUDPServer();
+        fullpool.CheckUDPServer();
     }
     if (BroadcastUDP)
     {
         BroadcastUDP = false;
         //Serial.println("____________________________________send");
-        //fullpool.sendUDPBroadcast();
+        fullpool.sendUDPBroadcast();
     }
 }

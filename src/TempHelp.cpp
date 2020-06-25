@@ -12,20 +12,21 @@ int16_t Tempsensor::read()
     byte data[12];
 
     if(this->connected){
+        this->sensor.reset();
         this->sensor.select(this->addr);
         this->sensor.write(0xBE); // Read Scratchpad
 
-        Serial.print("  Data = ");
-        Serial.print(" ");
+        //Serial.print("  Data = ");
+       // Serial.print(" ");
         for (i = 0; i < 9; i++)
         { // we need 9 bytes
             data[i] = this->sensor.read();
-            Serial.print(data[i], HEX);
-            Serial.print(" ");
+        //    Serial.print(data[i], HEX);
+        //    Serial.print(" ");
         }
-        Serial.print(" CRC=");
-        Serial.print(OneWire::crc8(data, 8), HEX);
-        Serial.println();
+       // Serial.print(" CRC=");
+       // Serial.print(OneWire::crc8(data, 8), HEX);
+      //  Serial.println();
 
         if (OneWire::crc8(data, 8) != data[8])
         { // this will happen if there are bit errors durring data transmition so reject the data
@@ -34,7 +35,6 @@ int16_t Tempsensor::read()
             return 0;
         }
     }
-
 
     if (this->addr[0] == 0x00 || !connected)
     {
