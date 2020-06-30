@@ -1,3 +1,4 @@
+/*
 #define PrimarySPI_MISO 19
 #define PrimarySPI_MOSI 23
 #define PrimarySPI_SCLK 18
@@ -16,8 +17,34 @@
 #define AdxlInt_EL 26
 #define AdxlInt_Ballence 27
 
-#define SDA 21
-#define SCL 22
-
 #define AZ_Temp_Line 4
 #define EL_Temp_Line 16
+*/
+// https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
+// 0, 2, 5, 12, 15 can affect boot sequence if used improperly
+// 6, 7, 8, 9, 10, 11 are connected to internal spi flash
+// 32, 33 are connected to intrenal crystal and cannot be used
+// 34, 35, 36, 39 are input only
+// 1, 3, 5, 14, 15 are pulled high or pwm durring boot/reboot
+
+//unused input: 34, 35, 36, 39
+#define PrimarySPI_MISO 22
+#define PrimarySPI_MOSI 23
+#define PrimarySPI_SCLK 21
+#define PrimarySPI_SS 5
+
+#define SecondarySPI_MISO 25
+#define SecondarySPI_MOSI 26
+#define SecondarySPI_SCLK 27
+#define SecondarySPI_SS -1
+
+#define AdxlSS_AZ 14
+#define AdxlSS_EL 12
+#define AdxlSS_Ballence 13
+
+#define AdxlInt_AZ 17
+#define AdxlInt_EL 16
+#define AdxlInt_Ballence 4
+
+#define AZ_Temp_Line 18
+#define EL_Temp_Line 19

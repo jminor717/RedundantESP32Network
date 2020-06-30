@@ -5,7 +5,7 @@ var selfIP = "169.254.205.47";
 const PORT = 8888;
 
 var tcpport = 1602;
-var recivedfrom =[]
+var recivedfrom = []
 var broadcast;
 server.bind(function () {
     server.setBroadcast(true)
@@ -44,26 +44,34 @@ socket.on("listening", function () {
 
 
 socket.on("message", function (message, rinfo) {
-    if (selfIP == rinfo.address){
+    if (selfIP == rinfo.address) {
         return;
     }
     var seen = false;
     recivedfrom.forEach(element => {
-        if (element.address == rinfo.address){
-            seen= true;
-            setTimeout(()=>{
+        if (element.address == rinfo.address) {
+            seen = true;
+            setTimeout(() => {
                 clearInterval(broadcast)
-            },5000)
+            }, 5000)
         }
     });
-    if(seen)return;
-    recivedfrom.push({ address : rinfo.address, lastFrom : new Date().getTime()})
+    if (seen) return;
+    recivedfrom.push({ address: rinfo.address, lastFrom: new Date().getTime() })
     console.info(`Message from: ${rinfo.address}:${rinfo.port} - ${message}`);
     var client = new net.Socket();
     client.connect(tcpport, rinfo.address, function () {
         console.log('Connected');
-        let obb = { adress: selfIP, name: "esp111", arr: [1, 3, 4, 6] };
-        client.write(JSON.stringify(obb));
+        //let obb = { adress: selfIP, name: "esp111", arr: [1, 3, 4, 6] };
+       // client.write(JSON.stringify(obb));
+        let buffer = new ArrayBuffer(258);
+
+        let usernameView = new Uint8Array(buffer, 0, buffer.length);
+        for (let index = 0; index < usernameView.length; index++) {
+            usernameView[index] = index; "␇"
+
+        }
+        client.write(usernameView);
     });
 
     client.on('data', function (data) {
@@ -79,6 +87,40 @@ socket.on("message", function (message, rinfo) {
 
 
 /*
+
+0   ␀
+1   ␁
+2   ␂
+3   ␃
+4   ␄
+5   ␅
+6   ␆
+7   ␇
+8
+9
+10
+
+11   ␋
+12   ␌
+13
+14   ␎
+15   ␏
+16   ␐
+17   ␑
+18   ␒
+19   ␓
+20   ␔
+21   ␕
+22   ␖
+23   ␗
+24   ␘
+25   ␙
+26   ␚
+27   ␛
+28   ␜
+29   ␝
+30   ␞
+31   ␟
 
 const tcpserv = net.createServer((socket) => {
     console.log('client connected');
@@ -103,7 +145,7 @@ tcpserv.on("connection", function (client) {  // on connection event, when someo
         console.log("_________________ ");
         console.log("Server received data: "); // log what the client sent
         console.log("Server received data: "+data); // log what the client sent
-        console.log( data); 
+        console.log( data);
     });
 });
 

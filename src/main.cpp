@@ -80,6 +80,7 @@ std::atomic<bool> measureELTemp;
 std::atomic<bool> CheckUDP;
 std::atomic<bool> CheckEthernet;
 std::atomic<bool> BroadcastUDP;
+bool azz = false, elz = false, bz = false;
 
 void TimerCallback(TimerHandle_t xTimer)
 {
@@ -156,8 +157,10 @@ void setup()
     accSPI_Ballence->spi_clock_speed = 200000;
     //acc1buffer = new ADXLbuffer(1600);
 
+    // initialize the spi bus used by Ethernet.h to have the pinnout we specify
+    SPI.begin(PrimarySPI_SCLK, PrimarySPI_MISO, PrimarySPI_MOSI, PrimarySPI_SS);
     // You can use Ethernet.init(pin) to configure the CS pin
-    //SCLK = 18, MISO = 19, MOSI = 23, SS = 5
+    ////SCLK = 18, MISO = 19, MOSI = 23, SS = 5
     Ethernet.init(PrimarySPI_SS);
     // initialize the ethernet device
     Ethernet.begin(mac, fullpool.self.address, gateway, gateway, subnet);
@@ -218,10 +221,12 @@ void loop()
                     for (int j = 0; j < bytes; j++)
                     {
                         msg[j] = (char)data[j];
+                        Serial.print(data[j]);
+                        Serial.print("   ");
+                        Serial.println(msg[j]);
                     }
                     if (msg[0] == '{')
                     {
-                        
                     }
                     printf("message is %d bytes long\n", bytes);
                     Serial.println(msg);
@@ -238,38 +243,70 @@ void loop()
     // Serial.println(data2);accSPI_Ballence
     if (accSPI_AZ->bufferFull)
     {
-        accSPI_AZ->bufferFull = false;
+        if (!azz){
+           // Serial.print("EL:");
+           // Serial.println(acc1buffer.buffer.size());
+            if (acc1buffer.buffer.size()>1598)
+            {
+                azz =true;
+                Serial.println("AZ:FULL");
+            }
+        }
+            accSPI_AZ->bufferFull = false;
+        // Serial.print("AZ_");
         accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_AZ);
         for (size_t i = 0; i < buffer.lenght; i++)
         {
             acc1buffer.buffer.push(buffer.buffer[i]);
         }
-        sprintf(data2, "%d, %d, %d,    1    %d", acc1buffer.buffer.front().x, acc1buffer.buffer.front().y, acc1buffer.buffer.front().z, acc1buffer.buffer.size());
+        // sprintf(data2, "%d, %d, %d,    1    %d", acc1buffer.buffer.front().x, acc1buffer.buffer.front().y, acc1buffer.buffer.front().z, acc1buffer.buffer.size());
+        // Serial.println(data2);
         acc1buffer.buffer.pop();
     }
     if (accSPI_EL->bufferFull)
     {
+        if (!elz)
+        {
+           // Serial.print("EL:");
+           // Serial.println(acc2buffer.buffer.size());
+            if (acc2buffer.buffer.size() > 1598)
+            {
+                elz = true;
+                Serial.println("EL:FULL");
+            }
+        }
         accSPI_EL->bufferFull = false;
-
+        // Serial.print("EL_");
         accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_EL);
         for (size_t i = 0; i < buffer.lenght; i++)
         {
             acc2buffer.buffer.push(buffer.buffer[i]);
         }
-        //  Serial.println(data2);
-        sprintf(data2, "%d, %d, %d,    2    %d", acc2buffer.buffer.front().x, acc2buffer.buffer.front().y, acc2buffer.buffer.front().z, acc2buffer.buffer.size());
+        //sprintf(data2, "%d, %d, %d,    2    %d", acc2buffer.buffer.front().x, acc2buffer.buffer.front().y, acc2buffer.buffer.front().z, acc2buffer.buffer.size());
+        // Serial.println(data2);
         acc2buffer.buffer.pop();
     }
     if (accSPI_Ballence->bufferFull)
     {
+        if (!bz)
+        {
+            //Serial.print("BL:");
+            //Serial.println(acc3buffer.buffer.size());
+            if (acc3buffer.buffer.size() > 1598)
+            {
+                bz = true;
+                Serial.println("Ballence:FULL");
+            }
+        }
         accSPI_Ballence->bufferFull = false;
+        // Serial.print("BA_");
         accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_Ballence);
         for (size_t i = 0; i < buffer.lenght; i++)
         {
             acc3buffer.buffer.push(buffer.buffer[i]);
         }
-
-        sprintf(data2, "%d, %d, %d,    1    %d", acc3buffer.buffer.front().x, acc3buffer.buffer.front().y, acc3buffer.buffer.front().z, acc3buffer.buffer.size());
+        //sprintf(data2, "%d, %d, %d,    1    %d", acc3buffer.buffer.front().x, acc3buffer.buffer.front().y, acc3buffer.buffer.front().z, acc3buffer.buffer.size());
+        //Serial.println(data2);
         acc3buffer.buffer.pop();
     }
 

@@ -2,10 +2,7 @@
 #include <Arduino.h>
 #include <spihelp.hpp>
 #include <map>
-
-#define AdxlInt_AZ 25
-#define AdxlInt_EL 26
-#define AdxlInt_Ballence 27
+#include <myConfig.hpp>
 
 std::map<int, ADXL345_SPI *> callbacks;
 
