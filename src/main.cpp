@@ -106,6 +106,11 @@ void TimerCallback(TimerHandle_t xTimer)
     }
     else if (Timer_id == BroadcastUDP_id)
     {
+        if (!PoolManagment::broadcastIP)
+        {
+            // Serial.println("herrtr");xTimerDelete
+            xTimerStop(xTimers[BroadcastUDP_id], 0);
+        }
         BroadcastUDP = true;
     }
 }
@@ -249,7 +254,8 @@ void loop()
             if (acc1buffer.buffer.size()>1598)
             {
                 azz =true;
-                Serial.println("AZ:FULL");
+               // Serial.println("AZ:FULL");
+                fullpool.broadcastMessage((char *)"AZ:FULL");
             }
         }
             accSPI_AZ->bufferFull = false;
@@ -272,7 +278,8 @@ void loop()
             if (acc2buffer.buffer.size() > 1598)
             {
                 elz = true;
-                Serial.println("EL:FULL");
+               // Serial.println("EL:FULL");
+                fullpool.broadcastMessage((char *)"EL:FULL");
             }
         }
         accSPI_EL->bufferFull = false;
@@ -295,7 +302,8 @@ void loop()
             if (acc3buffer.buffer.size() > 1598)
             {
                 bz = true;
-                Serial.println("Ballence:FULL");
+                //Serial.println("Ballence:FULL");
+                fullpool.broadcastMessage((char *)"Ballence:FULL");
             }
         }
         accSPI_Ballence->bufferFull = false;
@@ -314,13 +322,15 @@ void loop()
     {
         measureAZTemp = false;
         sprintf(data2, "AZ: %d", AZTempSense.read());
-        Serial.print(data2);
+        fullpool.broadcastMessage(data2);
+        //Serial.print(data2);
     }
     if (measureELTemp)
     {
         measureELTemp = false;
-        sprintf(data2, "   EL: %d", ELTempSense.read());
-        Serial.println(data2);
+        sprintf(data2, "EL: %d", ELTempSense.read());
+        fullpool.broadcastMessage(data2);
+        //Serial.println(data2);
     }
 
     if (CheckUDP)
