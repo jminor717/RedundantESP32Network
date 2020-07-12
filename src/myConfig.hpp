@@ -49,3 +49,6 @@
 
 #define AZ_Temp_Line 16
 #define EL_Temp_Line 17
+
+#define TCPPORT 1602
+#define UDPPORT 8888

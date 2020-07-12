@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <Ethernet.h>
 #include <EthernetHelp.hpp>
+#include <myConfig.hpp>
 
 const char *loginIndex =
     "<form name='loginForm'>"
@@ -182,7 +183,7 @@ int processOneTimeConnection(EthernetClient client, size_t bytes, uint8_t *ptr, 
 void sendEthernetMessage(const char *msg, size_t length, IPAddress destination)
 {
     EthernetClient sendClient;
-    if (sendClient.connect(destination, 1602))
+    if (sendClient.connect(destination, TCPPORT))
     {
         Serial.println("connected");
         sendClient.println(msg);

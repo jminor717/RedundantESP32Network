@@ -3,11 +3,16 @@
 using namespace std;
 class PoolDevice
 {
-public:
-    std::atomic<bool> isMaster;
-    IPAddress address;
+public: //http://www.esp32learning.com/code/esp32-true-random-number-generator-example.php
+    std::atomic<bool> IsMaster;
+    IPAddress Address;
+    uint32_t Health;
+    uint32_t RandomFactor;
+    static const uint8_t OBJID = 130;
     PoolDevice(IPAddress);
     PoolDevice();
+    int Transmit_Prep(uint8_t *);
+    int From_Transmition(uint8_t*);
 };
 
 class PoolManagment
@@ -27,3 +32,4 @@ public:
     void UDPSetup();
     void broadcastMessage(char *);
 };
+

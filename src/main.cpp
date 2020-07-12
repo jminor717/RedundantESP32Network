@@ -44,13 +44,12 @@ bool poolActive = false;
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress gateway(169, 254, 205, 1);
 IPAddress subnet(255, 255, 0, 0);
-const int ethernetPort = 1602;
 //ethernet server
-EthernetServer server(ethernetPort);
+EthernetServer server(TCPPORT);
 PoolManagment fullpool(
     IPAddress(169, 254, 205, 177),
     IPAddress(169, 254, 255, 255),
-    8888);
+    UDPPORT);
 
 //spi classes
 SPIClass *PrimarySPI = NULL;   // primary spi buss, used as the default for most libraries
@@ -168,7 +167,7 @@ void setup()
     ////SCLK = 18, MISO = 19, MOSI = 23, SS = 5
     Ethernet.init(PrimarySPI_SS);
     // initialize the ethernet device
-    Ethernet.begin(mac, fullpool.self.address, gateway, gateway, subnet);
+    Ethernet.begin(mac, fullpool.self.Address, gateway, gateway, subnet);
 
     // Open serial communications and wait for port to open:
     Serial.begin(115200);
@@ -198,7 +197,7 @@ void setup()
     Serial.print("ethernet server address:");
     Serial.println(Ethernet.localIP());
     Serial.print("ethernet server port:");
-    Serial.println(ethernetPort);
+    Serial.println(TCPPORT);
 }
 int tem = 0;
 void loop()
@@ -219,10 +218,23 @@ void loop()
                 uint8_t data[bytes] = {0};
                 ptr = data;
                 client.read(ptr, bytes);
-                int len = processOneTimeConnection(client, bytes, data, Serial);
-                if (len == -1 || len == -2)
+                //int len = processOneTimeConnection(client, bytes, data, Serial);
+                //if (len == -1 || len == -2)
+                // {
+
+                char msg[bytes];
+
+                if (data[0] == fullpool.self.OBJID)
                 {
-                    char msg[bytes];
+                    PoolDevice dev1;
+                    Serial.println("dev1");
+                    dev1.From_Transmition(data);
+                    Serial.println(dev1.Address);
+                    Serial.println(dev1.Health);
+                    Serial.println(dev1.RandomFactor);
+                }
+                else
+                {
                     for (int j = 0; j < bytes; j++)
                     {
                         msg[j] = (char)data[j];
@@ -230,17 +242,16 @@ void loop()
                         Serial.print("   ");
                         Serial.println(msg[j]);
                     }
-                    if (msg[0] == '{')
-                    {
-                    }
                     printf("message is %d bytes long\n", bytes);
                     Serial.println(msg);
-                    client.write("acknoledge");
-                    // give time to receive the data
-                    delay(2);
-                    // close the connection:
-                    client.stop();
                 }
+
+                client.write("acknoledge");
+                // give time to receive the data
+                delay(2);
+                // close the connection:
+                client.stop();
+                //  }
             }
         }
     }
@@ -248,17 +259,18 @@ void loop()
     // Serial.println(data2);accSPI_Ballence
     if (accSPI_AZ->bufferFull)
     {
-        if (!azz){
-           // Serial.print("EL:");
-           // Serial.println(acc1buffer.buffer.size());
-            if (acc1buffer.buffer.size()>1598)
+        if (!azz)
+        {
+            // Serial.print("EL:");
+            // Serial.println(acc1buffer.buffer.size());
+            if (acc1buffer.buffer.size() > 1598)
             {
-                azz =true;
-               // Serial.println("AZ:FULL");
+                azz = true;
+                // Serial.println("AZ:FULL");
                 fullpool.broadcastMessage((char *)"AZ:FULL");
             }
         }
-            accSPI_AZ->bufferFull = false;
+        accSPI_AZ->bufferFull = false;
         // Serial.print("AZ_");
         accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_AZ);
         for (size_t i = 0; i < buffer.lenght; i++)
@@ -273,12 +285,12 @@ void loop()
     {
         if (!elz)
         {
-           // Serial.print("EL:");
-           // Serial.println(acc2buffer.buffer.size());
+            // Serial.print("EL:");
+            // Serial.println(acc2buffer.buffer.size());
             if (acc2buffer.buffer.size() > 1598)
             {
                 elz = true;
-               // Serial.println("EL:FULL");
+                // Serial.println("EL:FULL");
                 fullpool.broadcastMessage((char *)"EL:FULL");
             }
         }
