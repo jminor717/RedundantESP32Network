@@ -165,42 +165,103 @@ server.listen(tcpport, function () {
     console.log(`Server listening for connection requests on socket localhost:${tcpport}`);
 });
 
-var accbuffer = [], AZTEmpBuffer = [], ELTEmpBuffer = []
+var accbufferAZ = [], accbufferEL = [], accbufferBAL = [], AZTEmpBuffer = [], ELTEmpBuffer = []
 
+function TwosCompliment16bit(lsb, msb) {
+    var unsignedValue = (msb << 8) | lsb;
+    if (unsignedValue & 0x8000) {
+        // If the sign bit is set, then set the two first bytes in the result to 0xff.
+        return unsignedValue | 0xffff0000;
+    } else {
+        // If the sign bit is not set, then the result  is the same as the unsigned value.
+        return unsignedValue;
+    }
+}
+
+var lastAZ = { x: 0, y: 0, z: 200 }, lastEL = { x: 0, y: 0, z: 200 }, lastBAL = { x: 0, y: 0, z: 200 }
+var azinit = false, elinit = false, balinit = false;
 function parseBigData(buf) {
-    let accBufSixe = buf[6];
-    accBufSixe += (buf[5] << 8);
-    let AZTempSize = buf[8];
-    AZTempSize += (buf[7] << 8);
-    let ELTempSize = buf[10];
-    ELTempSize += (buf[9] << 8);
-    accBufSixe = accBufSixe / 6;
-    let i = 11;
-    let accData = [], AZtempData = [], ELtempData = [];
-    for (let index = 0; index < accBufSixe; index++) {
+    let accBufSixeAZ = buf[6];
+    accBufSixeAZ += (buf[5] << 8);
+    let accBufSixeEL = buf[8];
+    accBufSixeEL += (buf[7] << 8);
+    let accBufSixeBAL = buf[10];
+    accBufSixeBAL += (buf[9] << 8);
+
+    let AZTempSize = buf[12];
+    AZTempSize += (buf[11] << 8);
+    let ELTempSize = buf[14];
+    ELTempSize += (buf[13] << 8);
+    accBufSixeAZ = accBufSixeAZ / 6;
+    accBufSixeEL = accBufSixeEL / 6;
+    accBufSixeBAL = accBufSixeBAL / 6;
+    let i = 15;
+    let accDataAZ = [], accDataEL = [], accDataBAL = [], AZtempData = [], ELtempData = [];
+    for (let index = 0; index < accBufSixeAZ; index++) {
         let element = {}
-        element.x = buf[i++];
-        element.x += (buf[i++] << 8)
-        element.y = buf[i++];
-        element.y += (buf[i++] << 8)
-        element.z = buf[i++];
-        element.z += (buf[i++] << 8)
-        let previous = accData[accData.length - 1];
-        if (previous != undefined) {
-            previous = accbuffer[accbuffer.length - 1];
-            if (previous != undefined) {
-                if (Math.abs(previous.x - element.x) > 30) {
-                    element.x = previous.x
-                }
-                if (Math.abs(previous.y - element.y) > 30) {
-                    element.y = previous.y
-                }
-                if (Math.abs(previous.z - element.z) > 30) {
-                    element.z = previous.z
-                }
-            }
+        element.x = TwosCompliment16bit(buf[i++], buf[i++])
+        element.y = TwosCompliment16bit(buf[i++], buf[i++])
+        element.z = TwosCompliment16bit(buf[i++], buf[i++])
+        if (Math.abs(element.x) > 500)
+            element.x = lastAZ.x
+        if (Math.abs(element.y) > 500)
+            element.y = lastAZ.y
+        if (Math.abs(element.z) > 500)
+            element.z = lastAZ.z
+        if (azinit) {
+            if (Math.abs(element.x - lastAZ.x) > 170)
+                element.x = lastAZ.x
+            if (Math.abs(element.y - lastAZ.y) > 170)
+                element.y = lastAZ.y
+            if (Math.abs(element.z - lastAZ.z) > 170)
+                element.z = lastAZ.z
         }
-        accData.push(element)
+        azinit = true;
+        accDataAZ.push(element)
+    }
+    for (let index = 0; index < accBufSixeEL; index++) {
+        let element = {}
+        element.x = TwosCompliment16bit(buf[i++], buf[i++])
+        element.y = TwosCompliment16bit(buf[i++], buf[i++])
+        element.z = TwosCompliment16bit(buf[i++], buf[i++])
+        if (Math.abs(element.x) > 500)
+            element.x = lastEL.x
+        if (Math.abs(element.y) > 500)
+            element.y = lastEL.y
+        if (Math.abs(element.z) > 500)
+            element.z = lastEL.z
+        if (elinit) {
+            if (Math.abs(element.x - lastEL.x) > 170)
+                element.x = lastEL.x
+            if (Math.abs(element.y - lastEL.y) > 170)
+                element.y = lastEL.y
+            if (Math.abs(element.z - lastEL.z) > 170)
+                element.z = lastEL.z
+        }
+        elinit = true;
+        accDataEL.push(element)
+    }
+    for (let index = 0; index < accBufSixeBAL; index++) {
+        let element = {}
+        element.x = TwosCompliment16bit(buf[i++], buf[i++])
+        element.y = TwosCompliment16bit(buf[i++], buf[i++])
+        element.z = TwosCompliment16bit(buf[i++], buf[i++])
+        if (Math.abs(element.x) > 500) 
+            element.x = lastBAL.x
+        if (Math.abs(element.y) > 500) 
+            element.y = lastBAL.y
+        if (Math.abs(element.z) > 500) 
+            element.z = lastBAL.z
+        if (balinit) {
+            if (Math.abs(element.x - lastBAL.x) > 170)
+                element.x = lastBAL.x
+            if (Math.abs(element.y - lastBAL.y) > 170)
+                element.y = lastBAL.y
+            if (Math.abs(element.z - lastBAL.z) > 170)
+                element.z = lastBAL.z
+        }
+        balinit = true;
+        accDataBAL.push(element)
     }
     for (let j = 0; j < AZTempSize; j++) {
         let element = buf[i++];
@@ -212,21 +273,11 @@ function parseBigData(buf) {
         element += (buf[i++] << 8)
         ELtempData.push(element);
     }
-    accbuffer = accData
+    accbufferAZ = accDataAZ
+    accbufferEL = accDataEL
+    accbufferBAL = accDataBAL
     AZTEmpBuffer = AZtempData
     ELTEmpBuffer = ELtempData
-    //
-    let rnd = Math.round(Math.random() * accbuffer.length - 2) + 1;
-    if (accbuffer.length > 0) {
-        if (accbuffer[rnd] == undefined) {
-            console.log(accbuffer)
-            console.log(buf)
-            console.log(`ACC:${accBufSixe}   AZT:${AZTempSize}   ELT:${ELTempSize}`)
-        }
-        else if (accbuffer[rnd].x == NaN) {
-            console.log(accbuffer)
-        }
-    } else { console.log(accbuffer) }
 
 }
 
@@ -270,11 +321,7 @@ server.on('connection', function (socket) {
             dev1.From_Transmition(chunk);
             console.log(dev1);
         } else {
-            console.log('An unknown connection has been established');
-            if (!parsed) {
-                parseBigData(arr);
-                parsed = true;
-            }
+            console.log(`An unknown connection has been established chunk[0] ${chunk[0]}`);
         }
 
         //socket.write('Acknoledge');
@@ -284,6 +331,10 @@ server.on('connection', function (socket) {
     // ends the connection.
     socket.on('end', function () {
         //console.log(`Closing connection with the client with data length ${expectedSize} and array size ${arr.length}`);
+        /*  if (!parsed) {
+              parseBigData(arr);
+              parsed = true;
+          }*/
     });
 
     // Don't forget to catch error, for your own sake.
@@ -370,7 +421,7 @@ var http = require('http');
 http.createServer(function (request, response) {
     var filePath = '.' + request.url;
     if (request.url == '/data') {
-        let respobj = { ACC: accbuffer, ELT: ELTEmpBuffer, AZT: AZTEmpBuffer }
+        let respobj = { ACC: accbufferAZ, ACCEL: accbufferEL, ACCBAL: accbufferBAL, ELT: ELTEmpBuffer, AZT: AZTEmpBuffer }
         let respstr = JSON.stringify(respobj)
         //console.log(respobj)
         response.writeHead(200, { 'Content-Type': 'application/json' });
@@ -424,44 +475,3 @@ http.createServer(function (request, response) {
         });
     }
 }).listen(8080);
-
-
-
-
-
-/*
-
-0   ␀
-1   ␁
-2   ␂
-3   ␃
-4   ␄
-5   ␅
-6   ␆
-7   ␇
-8
-9
-10
-
-11   ␋
-12   ␌
-13
-14   ␎
-15   ␏
-16   ␐
-17   ␑
-18   ␒
-19   ␓
-20   ␔
-21   ␕
-22   ␖
-23   ␗
-24   ␘
-25   ␙
-26   ␚
-27   ␛
-28   ␜
-29   ␝
-30   ␞
-31   ␟
-*/

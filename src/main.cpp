@@ -64,9 +64,9 @@ ADXLbuffer acc2buffer(1600);
 ADXLbuffer acc3buffer(1600);
 
 short AZTempBuf[tempBufSize];
-uint16_t AZTempBufSize=0;
+uint16_t AZTempBufSize = 0;
 short ELTempBuf[tempBufSize];
-uint16_t ELTempBufSize =0;
+uint16_t ELTempBufSize = 0;
 
 Tempsensor AZTempSense(AZ_Temp_Line);
 Tempsensor ELTempSense(EL_Temp_Line);
@@ -217,7 +217,7 @@ void setup()
 int tem = 0;
 void loop()
 {
-    char data2[30];
+    //char data2[30];
     if (CheckEthernet)
     {
         CheckEthernet = false;
@@ -244,9 +244,12 @@ void loop()
                     PoolDevice dev1;
                     Serial.println("remote device found");
                     dev1.From_Transmition(data);
-                    printf("remote device address: %s", dev1.Address.toString().c_str());
-                    printf("remote device health: %d", dev1.Health);
-                    printf("remote device random factor: %d", dev1.RandomFactor);
+                    Serial.print("remote device address: ");
+                    Serial.println(dev1.Address.toString().c_str());
+                    Serial.print("remote device health: ");
+                    Serial.println(dev1.Health);
+                    Serial.print("remote device random factor: ");
+                    Serial.println(dev1.RandomFactor);
                     bool found = false;
                     for (size_t i = 0; i < fullpool.pool.size(); i++)
                     {
@@ -277,7 +280,8 @@ void loop()
                         Serial.print("   ");
                         Serial.println(msg[j]);
                     }
-                    printf("message is %d bytes long\n", bytes);
+                    Serial.print("message is bytes long");
+                    Serial.println(bytes);
                     Serial.println(msg);
                 }
 
@@ -376,13 +380,19 @@ void loop()
     if (SendDataToControlRoom)
     {
         SendDataToControlRoom = false;
-        uint32_t dataSize = calcTransitSize(&acc3buffer, AZTempBufSize, ELTempBufSize); // determine the size of the array that needs to be alocated
+        uint32_t dataSize = calcTransitSize(&acc1buffer, &acc2buffer, &acc3buffer, AZTempBufSize, ELTempBufSize); // determine the size of the array that needs to be alocated
         uint8_t *dataToSend;
+     //   uint32_t heapspace = xPortGetFreeHeapSize();
+      //  uint32_t freeblock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+      //  Serial.println(heapspace);
+      //  Serial.println(freeblock);
+      //  Serial.println(dataSize);
         dataToSend = (uint8_t *)malloc(dataSize * sizeof(uint8_t)); //malloc needs to be used becaus stack size on the loop task is about 4k so this needs to go on the heap
-        prepairTransit(dataToSend, dataSize, &acc3buffer, AZTempBuf, AZTempBufSize, ELTempBuf, ELTempBufSize);
+        prepairTransit(dataToSend, dataSize, &acc1buffer, &acc2buffer, &acc3buffer, AZTempBuf, AZTempBufSize, ELTempBuf, ELTempBufSize);
         AZTempBufSize = 0;
         ELTempBufSize = 0;
         FowardDataToControlRoom(dataToSend, dataSize, fullpool.ControlRoomIP, TCPPORT);
         // this includes a flush and can be a very lengthy process the ethernet coms should at some point be put on their own thread
+        free(dataToSend);
     }
 }

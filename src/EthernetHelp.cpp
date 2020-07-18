@@ -85,7 +85,7 @@ const char *serverIndex =
     "});"
     "});"
     "</script>";
-
+/*
 void printHTTPheader(const char *method, size_t method_len, const char *path, size_t path_len, int minor_version, phr_header headers[100], size_t num_headers, int pret, HardwareSerial &Serial)
 {
     printf("request is %d bytes long\n", pret);
@@ -101,7 +101,7 @@ void printHTTPheader(const char *method, size_t method_len, const char *path, si
                headers[q].value);
     }
 }
-
+*/
 int processOneTimeConnection(EthernetClient client, size_t bytes, uint8_t *ptr, HardwareSerial Serial)
 {
     Serial.println("############################################################################################\nnew client");
@@ -130,14 +130,16 @@ int processOneTimeConnection(EthernetClient client, size_t bytes, uint8_t *ptr, 
     }
     else if (pret == -2)
     {
-        printf("request was too large at %u bytes long\n", bytes);
+        Serial.print("request was too large at");
+        Serial.println(bytes);
         // printf("%.*s\n", (int)bytes, msg);
         return pret;
     }
     char shortPath[path_len + 1] = {0};
     for (int w = 0; w < path_len; w++)
         shortPath[w] = path[w];
-    printf("path is %s\n", shortPath);
+    Serial.print("path is ");
+    Serial.println(shortPath);
     if (sizeof(path_len) == 1 && strcmp(shortPath, "/") == 0)
     {
         // send a standard http response header
@@ -206,7 +208,9 @@ void FowardDataToControlRoom(uint8_t *data, size_t DataLength, IPAddress ctrlRmA
         }
         sendClient.flush();
         sendClient.stop();
-    }else{
+    }
+    else
+    {
         Serial.println("TCP NOTTTT connected");
     }
 }

@@ -1,13 +1,17 @@
 <div id="chartContainer" style="height: 370px; width:100%;"></div>
+<div id="chartContainer1" style="height: 370px; width:100%;"></div>
+<div id="chartContainer2" style="height: 370px; width:100%;"></div>
 <script src="node_modules\canvasjs\dist\canvasjs.min.js"></script>
 <script>
-//download canvas js from https://canvasjs.com/ and unpack into node modules folder
+    //download canvas js from https://canvasjs.com/ and unpack into node modules folder
     window.onload = function () {
 
         var dps = [], dps1 = [], dps2 = []; // dataPoints
+        var dpsEL = [], dps1EL = [], dps2EL = []; // dataPoints
+        var dpsBAL = [], dps1BAL = [], dps2BAL = []; // dataPoints
         var chart = new CanvasJS.Chart("chartContainer", {
             title: {
-                text: "Dynamic Data"
+                text: "AZ ACC"
             },
             axisY: {
                 includeZero: true
@@ -24,11 +28,49 @@
                 dataPoints: dps2
             }]
         });
+        var chartEL = new CanvasJS.Chart("chartContainer1", {
+            title: {
+                text: "EL ACC"
+            },
+            axisY: {
+                includeZero: true
+            },
+            data: [{
+                type: "line",
+                dataPoints: dpsEL
+            },
+            {
+                type: "line",
+                dataPoints: dps1EL
+            }, {
+                type: "line",
+                dataPoints: dps2EL
+            }]
+        });
+        var chartBAL = new CanvasJS.Chart("chartContainer2", {
+            title: {
+                text: "BAL ACC"
+            },
+            axisY: {
+                includeZero: true
+            },
+            data: [{
+                type: "line",
+                dataPoints: dpsBAL
+            },
+            {
+                type: "line",
+                dataPoints: dps1BAL
+            }, {
+                type: "line",
+                dataPoints: dps2BAL
+            }]
+        });
 
-        var xVal = 0;
+        var xVal = 0, xValEL = 0, xValBAL = 0;
         var yVal = 100, yVal1 = 100, yVal2 = 100;
         var updateInterval = 100;
-        var dataLength = 800*3; // number of dataPoints visible at any point
+        var dataLength = 800 * 3; // number of dataPoints visible at any point
 
         var updateChart = function (count) {
 
@@ -36,43 +78,80 @@
             fetch("http://localhost:8080/data").then(response => response.json()).then(data => {
                 let l = data.ACC.length;
                 for (var j = 0; j < l; j++) {
-
-                    if (data.ACC[j].x < 500) {
-                        dps.push({
-                            x: xVal,
-                            y: data.ACC[j].x
-                        });
-                    }
-
-                    if (data.ACC[j].y < 500) {
-                        dps1.push({
-                            x: xVal,
-                            y: data.ACC[j].y
-                        });
-                    }
-
-                    if (data.ACC[j].z < 500) {
-                        dps2.push({
-                            x: xVal,
-                            y: data.ACC[j].z
-                        });
-                    }
+                    dps.push({
+                        x: xVal,
+                        y: data.ACC[j].x
+                    });
+                    dps1.push({
+                        x: xVal,
+                        y: data.ACC[j].y
+                    });
+                    dps2.push({
+                        x: xVal,
+                        y: data.ACC[j].z
+                    });
                     xVal++;
                 }
 
-                while (dps.length > dataLength) {
-                    dps.shift();
-                }
-                
-                while (dps1.length > dataLength) {
-                    dps1.shift();
-                }
-                
-                while (dps2.length > dataLength) {
-                    dps2.shift();
+                l = data.ACCEL.length;
+                for (var j = 0; j < l; j++) {
+                    dpsEL.push({
+                        x: xValEL,
+                        y: data.ACCEL[j].x
+                    });
+                    dps1EL.push({
+                        x: xValEL,
+                        y: data.ACCEL[j].y
+                    });
+                    dps2EL.push({
+                        x: xValEL,
+                        y: data.ACCEL[j].z
+                    });
+                    xValEL++;
                 }
 
+                l = data.ACCBAL.length;
+                for (var j = 0; j < l; j++) {
+                    dpsBAL.push({
+                        x: xValBAL,
+                        y: data.ACCBAL[j].x
+                    });
+                    dps1BAL.push({
+                        x: xValBAL,
+                        y: data.ACCBAL[j].y
+                    });
+                    dps2BAL.push({
+                        x: xValBAL,
+                        y: data.ACCBAL[j].z
+                    });
+                    xValBAL++;
+                }
+
+
+                while (dps.length > dataLength)
+                    dps.shift();
+                while (dps1.length > dataLength)
+                    dps1.shift();
+                while (dps2.length > dataLength)
+                    dps2.shift();
+
+                while (dpsEL.length > dataLength)
+                    dpsEL.shift();
+                while (dps1EL.length > dataLength)
+                    dps1EL.shift();
+                while (dps2EL.length > dataLength)
+                    dps2EL.shift();
+
+                while (dpsBAL.length > dataLength)
+                    dpsBAL.shift();
+                while (dps1BAL.length > dataLength)
+                    dps1BAL.shift();
+                while (dps2BAL.length > dataLength)
+                    dps2BAL.shift();
+
                 chart.render();
+                chartEL.render();
+                chartBAL.render();
             });
 
         };
