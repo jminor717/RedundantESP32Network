@@ -6,6 +6,7 @@
 
 EthernetClient ethClient;
 atomic<bool> PoolManagment::broadcastIP(true);
+atomic<bool> PoolManagment::ControlRoomFound(false); //! change this to false once control room detection is finished
 TimerHandle_t stopBZoradcasthanndle;
 long lastReconnectAttempt = 0;
 TickType_t continueBrodcastingUntill = pdMS_TO_TICKS(5000);
@@ -113,6 +114,8 @@ void PoolManagment::CheckUDPServer()
 
         Serial.println(this->self.Transmit_Prep(reply));
         EthernetClient sendClient;
+        PoolManagment::ControlRoomFound = true;
+        this->ControlRoomIP = remote;
         if (sendClient.connect(remote, TCPPORT))
         {
             for (size_t i = 0; i < 14; i++)

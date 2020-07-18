@@ -1,0 +1,84 @@
+<div id="chartContainer" style="height: 370px; width:100%;"></div>
+<script src="node_modules\canvasjs\dist\canvasjs.min.js"></script>
+<script>
+//download canvas js from https://canvasjs.com/ and unpack into node modules folder
+    window.onload = function () {
+
+        var dps = [], dps1 = [], dps2 = []; // dataPoints
+        var chart = new CanvasJS.Chart("chartContainer", {
+            title: {
+                text: "Dynamic Data"
+            },
+            axisY: {
+                includeZero: true
+            },
+            data: [{
+                type: "line",
+                dataPoints: dps
+            },
+            {
+                type: "line",
+                dataPoints: dps1
+            }, {
+                type: "line",
+                dataPoints: dps2
+            }]
+        });
+
+        var xVal = 0;
+        var yVal = 100, yVal1 = 100, yVal2 = 100;
+        var updateInterval = 100;
+        var dataLength = 800*3; // number of dataPoints visible at any point
+
+        var updateChart = function (count) {
+
+            count = count || 1;
+            fetch("http://localhost:8080/data").then(response => response.json()).then(data => {
+                let l = data.ACC.length;
+                for (var j = 0; j < l; j++) {
+
+                    if (data.ACC[j].x < 500) {
+                        dps.push({
+                            x: xVal,
+                            y: data.ACC[j].x
+                        });
+                    }
+
+                    if (data.ACC[j].y < 500) {
+                        dps1.push({
+                            x: xVal,
+                            y: data.ACC[j].y
+                        });
+                    }
+
+                    if (data.ACC[j].z < 500) {
+                        dps2.push({
+                            x: xVal,
+                            y: data.ACC[j].z
+                        });
+                    }
+                    xVal++;
+                }
+
+                while (dps.length > dataLength) {
+                    dps.shift();
+                }
+                
+                while (dps1.length > dataLength) {
+                    dps1.shift();
+                }
+                
+                while (dps2.length > dataLength) {
+                    dps2.shift();
+                }
+
+                chart.render();
+            });
+
+        };
+
+        updateChart(dataLength);
+        setInterval(function () { updateChart() }, updateInterval);
+
+    }
+</script>

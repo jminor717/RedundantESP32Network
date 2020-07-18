@@ -195,3 +195,18 @@ void sendEthernetMessage(const char *msg, size_t length, IPAddress destination)
     }
 }
 
+void FowardDataToControlRoom(uint8_t *data, size_t DataLength, IPAddress ctrlRmAddress, uint16_t ctrlRmPort)
+{
+    EthernetClient sendClient;
+    if (sendClient.connect(ctrlRmAddress, ctrlRmPort))
+    {
+        for (size_t i = 0; i < DataLength; i++)
+        {
+            sendClient.write((char)data[i]);
+        }
+        sendClient.flush();
+        sendClient.stop();
+    }else{
+        Serial.println("TCP NOTTTT connected");
+    }
+}

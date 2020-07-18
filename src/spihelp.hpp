@@ -34,8 +34,6 @@ public:
     void IRAM_ATTR interruptCallback();
 };
 
-
-
 struct acc
 {
     short x;
@@ -126,3 +124,5 @@ void spiWriteSingleADXL(SPI_DEVICE, uint8_t, uint8_t);
 
 uint8_t spiReadSingleADXL(SPI_DEVICE, uint8_t);
 accbuffer emptyAdxlBuffer(SPI_DEVICE);
+uint32_t calcTransitSize(ADXLbuffer *, int16_t, int16_t);
+uint32_t prepairTransit(uint8_t *, uint32_t, ADXLbuffer *, int16_t *, int16_t, int16_t *, int16_t);

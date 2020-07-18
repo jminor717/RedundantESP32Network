@@ -36,6 +36,7 @@ TODO: https://medium.com/@supotsaeea/esp32-reboot-system-when-watchdog-timeout-4
 #include "freertos/timers.h"
 #include <myConfig.hpp>
 //pin deffinitions
+#define tempBufSize 32
 
 bool isMaster = false;
 bool poolActive = false;
@@ -62,11 +63,16 @@ ADXLbuffer acc1buffer(1600); //; //= ADXLbuffer(1600);
 ADXLbuffer acc2buffer(1600);
 ADXLbuffer acc3buffer(1600);
 
+short AZTempBuf[tempBufSize];
+uint16_t AZTempBufSize=0;
+short ELTempBuf[tempBufSize];
+uint16_t ELTempBufSize =0;
+
 Tempsensor AZTempSense(AZ_Temp_Line);
 Tempsensor ELTempSense(EL_Temp_Line);
 
 //timer definitions
-#define NUM_TIMERS 5
+#define NUM_TIMERS 6
 TimerHandle_t xTimers[NUM_TIMERS];
 
 uint32_t AZ_id = 0;
@@ -74,12 +80,13 @@ uint32_t EL_id = 1;
 uint32_t CheckUDP_id = 2;
 uint32_t CheckEthernet_id = 3;
 uint32_t BroadcastUDP_id = 4;
+uint32_t SendDataToControlRoom_id = 5;
 std::atomic<bool> measureAZTemp;
 std::atomic<bool> measureELTemp;
 std::atomic<bool> CheckUDP;
 std::atomic<bool> CheckEthernet;
 std::atomic<bool> BroadcastUDP;
-bool azz = false, elz = false, bz = false;
+std::atomic<bool> SendDataToControlRoom;
 
 void TimerCallback(TimerHandle_t xTimer)
 {
@@ -107,10 +114,17 @@ void TimerCallback(TimerHandle_t xTimer)
     {
         if (!PoolManagment::broadcastIP)
         {
-            // Serial.println("herrtr");xTimerDelete
+            //once we no longer need to broadcast over UDB stop the timer to save resourses
             xTimerStop(xTimers[BroadcastUDP_id], 0);
         }
         BroadcastUDP = true;
+    }
+    else if (Timer_id == SendDataToControlRoom_id)
+    {
+        if (PoolManagment::ControlRoomFound)
+        {
+            SendDataToControlRoom = true;
+        }
     }
 }
 
@@ -119,7 +133,7 @@ TickType_t CheckEthernetTicks = pdMS_TO_TICKS(250);
 TickType_t BroadcastUDPTicks = pdMS_TO_TICKS(1000);
 TickType_t MeasureAZTempTicks = pdMS_TO_TICKS(1000);
 TickType_t MeasureELTempTicks = pdMS_TO_TICKS(1000);
-
+TickType_t DataSendTics = pdMS_TO_TICKS(100);
 void setup()
 {
     xTimers[AZ_id] = xTimerCreate("MeasureAZTemp", MeasureAZTempTicks, pdTRUE, (void *)AZ_id, TimerCallback);
@@ -127,6 +141,7 @@ void setup()
     xTimers[CheckUDP_id] = xTimerCreate("CheckUDP", CheckUDPTicks, pdTRUE, (void *)CheckUDP_id, TimerCallback);
     xTimers[CheckEthernet_id] = xTimerCreate("CheckEthernet", CheckEthernetTicks, pdTRUE, (void *)CheckEthernet_id, TimerCallback);
     xTimers[BroadcastUDP_id] = xTimerCreate("BroadcastUDP", BroadcastUDPTicks, pdTRUE, (void *)BroadcastUDP_id, TimerCallback);
+    xTimers[SendDataToControlRoom_id] = xTimerCreate("BroadcastUDP", DataSendTics, pdTRUE, (void *)SendDataToControlRoom_id, TimerCallback);
 
     long x;
     for (x = 0; x < NUM_TIMERS; x++)
@@ -227,11 +242,31 @@ void loop()
                 if (data[0] == fullpool.self.OBJID)
                 {
                     PoolDevice dev1;
-                    Serial.println("dev1");
+                    Serial.println("remote device found");
                     dev1.From_Transmition(data);
-                    Serial.println(dev1.Address);
-                    Serial.println(dev1.Health);
-                    Serial.println(dev1.RandomFactor);
+                    printf("remote device address: %s", dev1.Address.toString().c_str());
+                    printf("remote device health: %d", dev1.Health);
+                    printf("remote device random factor: %d", dev1.RandomFactor);
+                    bool found = false;
+                    for (size_t i = 0; i < fullpool.pool.size(); i++)
+                    {
+                        PoolDevice *dev = fullpool.pool.at(i);
+                        if (dev->Address == dev1.Address)
+                        {
+                            dev->Health = dev1.Health;
+                            dev->RandomFactor = dev1.RandomFactor;
+                            dev->IsMaster = dev1.IsMaster.load();
+                            found = true;
+                        }
+                    }
+                    if (!found)
+                    {
+                        fullpool.pool.push_back(new PoolDevice());
+                        PoolDevice *dev = fullpool.pool.back();
+                        dev->Health = dev1.Health;
+                        dev->RandomFactor = dev1.RandomFactor;
+                        dev->IsMaster = dev1.IsMaster.load();
+                    }
                 }
                 else
                 {
@@ -259,17 +294,6 @@ void loop()
     // Serial.println(data2);accSPI_Ballence
     if (accSPI_AZ->bufferFull)
     {
-        if (!azz)
-        {
-            // Serial.print("EL:");
-            // Serial.println(acc1buffer.buffer.size());
-            if (acc1buffer.buffer.size() > 1598)
-            {
-                azz = true;
-                // Serial.println("AZ:FULL");
-                fullpool.broadcastMessage((char *)"AZ:FULL");
-            }
-        }
         accSPI_AZ->bufferFull = false;
         // Serial.print("AZ_");
         accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_AZ);
@@ -279,21 +303,10 @@ void loop()
         }
         // sprintf(data2, "%d, %d, %d,    1    %d", acc1buffer.buffer.front().x, acc1buffer.buffer.front().y, acc1buffer.buffer.front().z, acc1buffer.buffer.size());
         // Serial.println(data2);
-        acc1buffer.buffer.pop();
+        //acc1buffer.buffer.pop();
     }
     if (accSPI_EL->bufferFull)
     {
-        if (!elz)
-        {
-            // Serial.print("EL:");
-            // Serial.println(acc2buffer.buffer.size());
-            if (acc2buffer.buffer.size() > 1598)
-            {
-                elz = true;
-                // Serial.println("EL:FULL");
-                fullpool.broadcastMessage((char *)"EL:FULL");
-            }
-        }
         accSPI_EL->bufferFull = false;
         // Serial.print("EL_");
         accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_EL);
@@ -303,21 +316,10 @@ void loop()
         }
         //sprintf(data2, "%d, %d, %d,    2    %d", acc2buffer.buffer.front().x, acc2buffer.buffer.front().y, acc2buffer.buffer.front().z, acc2buffer.buffer.size());
         // Serial.println(data2);
-        acc2buffer.buffer.pop();
+        //acc2buffer.buffer.pop();
     }
     if (accSPI_Ballence->bufferFull)
     {
-        if (!bz)
-        {
-            //Serial.print("BL:");
-            //Serial.println(acc3buffer.buffer.size());
-            if (acc3buffer.buffer.size() > 1598)
-            {
-                bz = true;
-                //Serial.println("Ballence:FULL");
-                fullpool.broadcastMessage((char *)"Ballence:FULL");
-            }
-        }
         accSPI_Ballence->bufferFull = false;
         // Serial.print("BA_");
         accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_Ballence);
@@ -327,34 +329,60 @@ void loop()
         }
         //sprintf(data2, "%d, %d, %d,    1    %d", acc3buffer.buffer.front().x, acc3buffer.buffer.front().y, acc3buffer.buffer.front().z, acc3buffer.buffer.size());
         //Serial.println(data2);
-        acc3buffer.buffer.pop();
+        //acc3buffer.buffer.pop();
     }
 
     if (measureAZTemp)
     {
         measureAZTemp = false;
-        sprintf(data2, "AZ: %d", AZTempSense.read());
-        fullpool.broadcastMessage(data2);
+        if (AZTempBufSize >= tempBufSize - 2)
+        {
+            AZTempBuf[AZTempBufSize] = AZTempSense.read();
+        }
+        else
+        {
+            AZTempBuf[AZTempBufSize++] = AZTempSense.read();
+        }
+        //sprintf(data2, "AZ: %d", AZTempSense.read());
+        //fullpool.broadcastMessage(data2);
         //Serial.print(data2);
     }
     if (measureELTemp)
     {
         measureELTemp = false;
-        sprintf(data2, "EL: %d", ELTempSense.read());
-        fullpool.broadcastMessage(data2);
+        if (ELTempBufSize >= tempBufSize - 2)
+        {
+            ELTempBuf[ELTempBufSize] = ELTempSense.read();
+        }
+        else
+        {
+            ELTempBuf[ELTempBufSize++] = ELTempSense.read();
+        }
+        //  sprintf(data2, "EL: %d", ELTempSense.read());
+        // fullpool.broadcastMessage(data2);
         //Serial.println(data2);
     }
 
     if (CheckUDP)
     {
         CheckUDP = false;
-        //Serial.println("____________________________________recieve");
         fullpool.CheckUDPServer();
     }
     if (BroadcastUDP)
     {
         BroadcastUDP = false;
-        //Serial.println("____________________________________send");
         fullpool.sendUDPBroadcast();
+    }
+    if (SendDataToControlRoom)
+    {
+        SendDataToControlRoom = false;
+        uint32_t dataSize = calcTransitSize(&acc3buffer, AZTempBufSize, ELTempBufSize); // determine the size of the array that needs to be alocated
+        uint8_t *dataToSend;
+        dataToSend = (uint8_t *)malloc(dataSize * sizeof(uint8_t)); //malloc needs to be used becaus stack size on the loop task is about 4k so this needs to go on the heap
+        prepairTransit(dataToSend, dataSize, &acc3buffer, AZTempBuf, AZTempBufSize, ELTempBuf, ELTempBufSize);
+        AZTempBufSize = 0;
+        ELTempBufSize = 0;
+        FowardDataToControlRoom(dataToSend, dataSize, fullpool.ControlRoomIP, TCPPORT);
+        // this includes a flush and can be a very lengthy process the ethernet coms should at some point be put on their own thread
     }
 }

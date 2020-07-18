@@ -1,0 +1,26 @@
+{
+  "name": "redundantesp32network",
+  "version": "1.0.0",
+  "description": "node js interface with esp32",
+  "main": "nodeSim.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jminor717/RedundantESP32Network.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jminor717/RedundantESP32Network/issues"
+  },
+  "homepage": "https://github.com/jminor717/RedundantESP32Network#readme",
+  "dependencies": {
+    "canvasjs": "^1.8.3"
+  }
+}

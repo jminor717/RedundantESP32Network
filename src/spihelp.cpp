@@ -103,7 +103,7 @@ accbuffer emptyAdxlBuffer(SPI_DEVICE dev)
 {
     uint8_t outBuff[2] = {0};
     uint8_t IN[2] = {0};
-    IN[0] = 0x39 | 0b11000000;
+    IN[0] = 0x39 | 0b11000000; //fifo sample buffer size location
     int AccReadBufLen = 7;
     accbuffer buf;
 
@@ -139,4 +139,58 @@ accbuffer emptyAdxlBuffer(SPI_DEVICE dev)
 ADXLbuffer::ADXLbuffer(size_t len)
 {
     this->maxsize = len;
+}
+//retune number of 8 bit chars required to transmit the presented data
+uint32_t calcTransitSize(ADXLbuffer *accDat, int16_t AZTempSize, int16_t ELTempSize)
+{
+    uint32_t length = 1 + 6 + 4; //identifier + [16|ACCcount,16|AZetmpCount,16|ELetmpCount] + total data length
+    length += (accDat->buffer.size() * 6);
+    length += (AZTempSize * 2);
+    length += (ELTempSize * 2);
+    return length;
+}
+uint32_t prepairTransit(uint8_t *reply, uint32_t dataSize, ADXLbuffer *accDat, int16_t *AZTempDat, int16_t AZTempSize, int16_t *ELTempDat, int16_t ELTempSize)
+{
+    //[16|ACCcount,16|AZetmpCount,16|ELetmpCount]
+    //acc data length = accDat.buffer.size() * 6
+    uint32_t i = 0;
+    reply[0] = DATA_TRANSMIT_ID;
+    reply[1] = (dataSize & 0xff000000) >> 24;
+    reply[2] = (dataSize & 0x00ff0000) >> 16;
+    reply[3] = (dataSize & 0x0000ff00) >> 8;
+    reply[4] = dataSize & 0x000000ff;
+    uint32_t accBufSixe = accDat->buffer.size();
+    reply[5] = ((accBufSixe * 6) & 0xff00) >> 8;
+    reply[6] = ((accBufSixe * 6) & 0x00ff);
+    reply[7] = (AZTempSize & 0xff00) >> 8;
+    reply[8] = (AZTempSize & 0x00ff);
+    reply[9] = (ELTempSize & 0xff00) >> 8;
+    reply[10] = (ELTempSize & 0x00ff);
+    if (AZTempSize>1){
+        Serial.println(AZTempSize);
+        Serial.println(ELTempSize);
+    }
+        i = 11;
+    for (uint32_t j = 0; j < accBufSixe; j++)
+    {
+        acc current = accDat->buffer.front();
+        reply[i++] = (current.x & 0x00ff);
+        reply[i++] = (current.x & 0xff00) >> 8;
+        reply[i++] = (current.y & 0x00ff);
+        reply[i++] = (current.y & 0xff00) >> 8;
+        reply[i++] = (current.z & 0x00ff);
+        reply[i++] = (current.z & 0xff00) >> 8;
+        accDat->buffer.pop();
+    }
+    for (uint32_t j = 0; j < AZTempSize; j++)
+    {
+        reply[i++] = (AZTempDat[j] & 0x00ff);
+        reply[i++] = (AZTempDat[j] & 0xff00) >> 8;
+    }
+    for (uint32_t j = 0; j < ELTempSize; j++)
+    {
+        reply[i++] = (ELTempDat[j] & 0x00ff);
+        reply[i++] = (ELTempDat[j] & 0xff00) >> 8;
+    }
+    return i;
 }

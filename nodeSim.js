@@ -1,5 +1,5 @@
 'use strict';
-
+//npm install low-pass-filter -g
 var os = require('os');
 var ifaces = os.networkInterfaces();
 var selfIP = "169.254.205.47";
@@ -7,10 +7,8 @@ var broadCastTarget = "169.254.255.255";
 
 
 var dgram = require('dgram');
-var net = require('net');
 var UDP_Client = dgram.createSocket("udp4");
 const UDPPORT = 8888;
-
 
 const tcpport = 1602;
 var recivedfrom = []
@@ -76,7 +74,7 @@ class pooldev {
         this.Health += data[++i] << 8;
         this.Health += data[++i] << 16;
         this.Health += data[++i] << 24;
-        
+
         this.RandomFactor = data[++i];
         this.RandomFactor += data[++i] << 8;
         this.RandomFactor += data[++i] << 16;
@@ -167,33 +165,130 @@ server.listen(tcpport, function () {
     console.log(`Server listening for connection requests on socket localhost:${tcpport}`);
 });
 
+var accbuffer = [], AZTEmpBuffer = [], ELTEmpBuffer = []
+
+function parseBigData(buf) {
+    let accBufSixe = buf[6];
+    accBufSixe += (buf[5] << 8);
+    let AZTempSize = buf[8];
+    AZTempSize += (buf[7] << 8);
+    let ELTempSize = buf[10];
+    ELTempSize += (buf[9] << 8);
+    accBufSixe = accBufSixe / 6;
+    let i = 11;
+    let accData = [], AZtempData = [], ELtempData = [];
+    for (let index = 0; index < accBufSixe; index++) {
+        let element = {}
+        element.x = buf[i++];
+        element.x += (buf[i++] << 8)
+        element.y = buf[i++];
+        element.y += (buf[i++] << 8)
+        element.z = buf[i++];
+        element.z += (buf[i++] << 8)
+        let previous = accData[accData.length - 1];
+        if (previous != undefined) {
+            previous = accbuffer[accbuffer.length - 1];
+            if (previous != undefined) {
+                if (Math.abs(previous.x - element.x) > 30) {
+                    element.x = previous.x
+                }
+                if (Math.abs(previous.y - element.y) > 30) {
+                    element.y = previous.y
+                }
+                if (Math.abs(previous.z - element.z) > 30) {
+                    element.z = previous.z
+                }
+            }
+        }
+        accData.push(element)
+    }
+    for (let j = 0; j < AZTempSize; j++) {
+        let element = buf[i++];
+        element += (buf[i++] << 8)
+        AZtempData.push(element);
+    }
+    for (let j = 0; j < ELTempSize; j++) {
+        let element = buf[i++];
+        element += (buf[i++] << 8)
+        ELtempData.push(element);
+    }
+    accbuffer = accData
+    AZTEmpBuffer = AZtempData
+    ELTEmpBuffer = ELtempData
+    //
+    let rnd = Math.round(Math.random() * accbuffer.length - 2) + 1;
+    if (accbuffer.length > 0) {
+        if (accbuffer[rnd] == undefined) {
+            console.log(accbuffer)
+            console.log(buf)
+            console.log(`ACC:${accBufSixe}   AZT:${AZTempSize}   ELT:${ELTempSize}`)
+        }
+        else if (accbuffer[rnd].x == NaN) {
+            console.log(accbuffer)
+        }
+    } else { console.log(accbuffer) }
+
+}
+
+
 // When a client requests a connection with the server, the server creates a new
 // socket dedicated to that client.
 server.on('connection', function (socket) {
-    console.log('A new connection has been established');
-
+    let bigdata = false;
+    let arr = Buffer.alloc(1);
+    let expectedSize = -1;
+    let parsed = false;
     // The server can also receive data from the client by reading from its socket.
     socket.on('data', function (chunk) {
-        console.log(`Data received from client: ${chunk.length} bytes long`);
-        console.log(chunk);
-        if (chunk[0] === selfDev.OBJID){
+        //console.log(`Data received from client: ${chunk.length} bytes long`);
+        //console.log(chunk);
+        if (bigdata) {
+            arr = Buffer.concat([arr, chunk]);
+            if (expectedSize == -1 && arr.length > 11) {
+                expectedSize = arr[4]
+                expectedSize += (arr[3] << 8)
+                expectedSize += (arr[2] << 16)
+                expectedSize += (arr[1] << 24)
+            }
+            else if (expectedSize != -1 && arr.length >= expectedSize - 1) {
+                //console.log(arr);
+                if (!parsed) {
+                    //console.log(`data connection established with ${expectedSize} expected bytes`);
+                    parseBigData(arr);
+                    parsed = true;
+                }
+                socket.end();
+            }
+        }
+        else if (chunk[0] === 131) {
+            bigdata = true;
+            arr = chunk;
+            //console.log(`data connection established with ${expectedSize} bytes of data first backet:${chunk.length}`);
+        }
+        else if (chunk[0] === selfDev.OBJID) {
             let dev1 = new pooldev(socket.remoteAddress);
             dev1.From_Transmition(chunk);
             console.log(dev1);
+        } else {
+            console.log('An unknown connection has been established');
+            if (!parsed) {
+                parseBigData(arr);
+                parsed = true;
+            }
         }
-        socket.write('Acknoledge');
-        socket.end();
+
+        //socket.write('Acknoledge');
     });
 
     // When the client requests to end the TCP connection with the server, the server
     // ends the connection.
-    socket.on('end', function() {
-        console.log('Closing connection with the client');
+    socket.on('end', function () {
+        //console.log(`Closing connection with the client with data length ${expectedSize} and array size ${arr.length}`);
     });
 
     // Don't forget to catch error, for your own sake.
-    socket.on('error', function(err) {
-        console.log(`Error: ${ err }`);
+    socket.on('error', function (err) {
+        console.log(`Error: ${err}`);
     });
 });
 
@@ -240,7 +335,7 @@ socket.on("message", function (message, rinfo) {
     recivedfrom.push({ address: rinfo.address, lastFrom: new Date().getTime() })
     console.info(`Message from: ${rinfo.address}:${rinfo.port} - ${message}`);
     if (seen) return;
-    var client = new net.Socket();
+    var client = new Net.Socket();
     client.connect(tcpport, rinfo.address, function () {
         console.log('Connected UDP');
         /*let buffer = new ArrayBuffer(258);
@@ -264,6 +359,73 @@ socket.on("message", function (message, rinfo) {
         console.log('Connection closed');
     });
 });
+
+
+
+var fs = require('fs');
+var path = require('path');
+var http = require('http');
+
+//create a server object:
+http.createServer(function (request, response) {
+    var filePath = '.' + request.url;
+    if (request.url == '/data') {
+        let respobj = { ACC: accbuffer, ELT: ELTEmpBuffer, AZT: AZTEmpBuffer }
+        let respstr = JSON.stringify(respobj)
+        //console.log(respobj)
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end(respstr, 'utf-8');
+    } else {
+        if (filePath == './')
+            filePath = './index.html';
+
+
+        var extname = path.extname(filePath);
+        var contentType = 'text/html';
+        switch (extname) {
+            case '.js':
+                contentType = 'text/javascript';
+                break;
+            case '.css':
+                contentType = 'text/css';
+                break;
+            case '.json':
+                contentType = 'application/json';
+                break;
+            case '.png':
+                contentType = 'image/png';
+                break;
+            case '.jpg':
+                contentType = 'image/jpg';
+                break;
+            case '.wav':
+                contentType = 'audio/wav';
+                break;
+        }
+
+        fs.readFile(filePath, function (error, content) {
+            if (error) {
+                if (error.code == 'ENOENT') {
+                    fs.readFile('./404.html', function (error, content) {
+                        response.writeHead(200, { 'Content-Type': contentType });
+                        response.end(content, 'utf-8');
+                    });
+                }
+                else {
+                    response.writeHead(500);
+                    response.end('Sorry, check with the site admin for error: ' + error.code + ' ..\n');
+                    response.end();
+                }
+            }
+            else {
+                response.writeHead(200, { 'Content-Type': contentType });
+                response.end(content, 'utf-8');
+            }
+        });
+    }
+}).listen(8080);
+
+
 
 
 
