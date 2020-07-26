@@ -7,6 +7,7 @@
 EthernetClient ethClient;
 atomic<bool> PoolManagment::broadcastIP(true);
 atomic<bool> PoolManagment::ControlRoomFound(false); //! change this to false once control room detection is finished
+atomic<bool> PoolManagment::InUpdateMode(false);
 TimerHandle_t stopBZoradcasthanndle;
 long lastReconnectAttempt = 0;
 TickType_t continueBrodcastingUntill = pdMS_TO_TICKS(5000);
@@ -61,30 +62,49 @@ void PoolManagment::CheckUDPServer()
         //Serial.println("Contents:");
         uint8_t sourceLenght = 0;
         uint8_t seperatorLocation = 0;
+        uint8_t Section2Lenght = 0;
+        uint8_t Section3Lenght = 0;
         for (size_t i = 0; i < packetSize; i++)
         {
             if (packetBuffer[i] == 17) //use ascii device controll 1 a seperator
                 seperatorLocation++;
-            if (seperatorLocation == 0) //section before the first seperator
-                sourceLenght++;
+            else if (seperatorLocation == 0) //section before the first seperator used to denote what type of device comand is comming from
+                sourceLenght++;              //eg. ESP32   or    controlroom
+            else if (seperatorLocation == 1) //section after the first seperator used as a comand comming from the controll room
+                Section2Lenght++;
+            else if (seperatorLocation == 2) //section after the second seperator value for this command
+                Section3Lenght++;            //!note this is not implamented in the controll room only in the nodejs file i made to interface with the esp32
         }
-        char source[sourceLenght] = {0};
+        //char source[sourceLenght] = {0};
+        char *source = new char[sourceLenght];
         for (size_t i = 0; i < sourceLenght; i++)
         {
             source[i] = (char)packetBuffer[i];
             //Serial.print(source[i]);
         }
-
-        int dif = strcmp(source, "ESP32"); //strcmp outputs position of the first differnece between the 2 strings
-        bool formPool = false;
-        if (dif >= sourceLenght || dif <= -sourceLenght) //if this position is larger than the length of the string they are equal
-        {                                                //this will indicate a discovery broadcast from another ESP32
-            formPool = true;
-            Serial.println("formPool");
+        char *comand = new char[Section2Lenght];
+        if (Section2Lenght > 0)
+        {
+            for (size_t i = 0; i < Section2Lenght; i++)
+            {
+                comand[i] = (char)packetBuffer[sourceLenght + 1 + i];
+                //Serial.print(comand[i]);
+            }
+        }
+        char *value = new char[Section3Lenght]; // new is neccary because static arays dont suport a length of 0 and cause a crash
+        if (Section3Lenght > 0)
+        {
+            for (size_t i = 0; i < Section3Lenght; i++)
+            {
+                value[i] = (char)packetBuffer[sourceLenght + 1 + Section2Lenght + 1 + i];
+                //Serial.print(value[i]);
+            }
         }
 
-        if (formPool)
-        {
+        int dif = strcmp(source, "ESP32");               //strcmp outputs position of the first differnece between the 2 strings
+        if (dif >= sourceLenght || dif <= -sourceLenght) //if this position is larger than the length of the string they are equal
+        {                                                //this will indicate a discovery broadcast from another ESP32
+            Serial.println("formPool");
             bool seen = false;
             for (size_t i = 0; i < this->pool.size(); i++)
             {
@@ -107,35 +127,82 @@ void PoolManagment::CheckUDPServer()
                 if (seen)
                     return;
             }
+            this->pool.push_back(new PoolDevice(remote));
+            this->SendPoolInfo(remote);
+
         }
-        this->pool.push_back(new PoolDevice(remote));
         //add additional pool fomation logic could also be usefull to but it in callback3333 to do this after a delay
-        uint8_t reply[14];
-
-        Serial.println(this->self.Transmit_Prep(reply));
-        EthernetClient sendClient;
-        PoolManagment::ControlRoomFound = true;
-        this->ControlRoomIP = remote;
-        if (sendClient.connect(remote, TCPPORT))
-        {
-            for (size_t i = 0; i < 14; i++)
+        dif = strcmp(source, "CONTROL");                 //strcmp outputs position of the first differnece between the 2 strings
+        if (dif >= sourceLenght || dif <= -sourceLenght) //if this position is larger than the length of the string they are equal
+        {                                                //this will indicate a discovery broadcast from another ESP32
+            if (!ControlRoomFound)
             {
-                sendClient.write((char)reply[i]);
+                dif = strcmp(comand, "DISCOVER");
+                if (dif >= Section2Lenght || dif <= -Section2Lenght)
+                {
+                    PoolManagment::ControlRoomFound = true;
+                    this->ControlRoomIP = remote;
+                    Serial.print("control room found at ");
+                    Serial.println(remote.toString());
+                }
             }
-            Serial.println("TCP connected");
-        }
-        else
-        {
-            Serial.print("TCP connection failed with ");
-            Serial.println(remote.toString());
-        }
+            dif = strcmp(comand, "SETUPDATE");
+            if (dif >= Section2Lenght || dif <= -Section2Lenght)
+            {
+                Serial.print("control room set update mode to ");
 
+                dif = strcmp(value, "true");
+                if (dif >= Section3Lenght || dif <= -Section3Lenght)
+                {
+                    PoolManagment::InUpdateMode = true;
+                    Serial.println("true");
+                }
+                else
+                {
+                    PoolManagment::InUpdateMode = false;
+                    Serial.println("false");
+                }
+            }
+            return;
+        }
+        /*
         Serial.print("Received packet of size ");
         Serial.println(packetSize);
         Serial.print("From ");
         Serial.print(remote.toString());
         Serial.print(", port ");
-        Serial.println(this->Udp.remotePort());
+        Serial.println(this->Udp.remotePort());*/
+    }
+}
+
+void PoolManagment::SendPoolInfo(IPAddress remote)
+{
+    int dataseize = this->self.Transmit_Size();
+    for (size_t i = 0; i < this->pool.size(); i++)
+    {
+        dataseize += this->self.Transmit_Size(); //dont need to do this for the each pool device since there all the same
+    }
+
+    uint8_t reply[dataseize];
+    this->self.Transmit_Prep(reply);
+    for (size_t i = 0; i < this->pool.size(); i++)
+    {
+        this->pool.at(i)->Transmit_Prep(reply+ (this->self.Transmit_Size() * i));//transmit knoledge about all devices currently in the pool
+    }
+    
+    EthernetClient sendClient;
+    if (sendClient.connect(remote, TCPPORT))
+    {
+        for (size_t i = 0; i < dataseize; i++)
+        {
+            sendClient.write(reply[i]);
+        }
+        Serial.println("TCP connected");
+    }
+    else
+    {
+        Serial.print("TCP connection failed with ");
+        Serial.println(remote.toString());
     }
 }
 
@@ -166,7 +233,7 @@ void PoolManagment::sendUDPBroadcast()
         data[i] = s.charAt(i);
     }
     this->Udp.write("ESP32");
-    this->Udp.write(17);
+    this->Udp.write(17); //device control code 1 in ascii
     this->Udp.write(data);
     this->Udp.endPacket();
 }
@@ -218,6 +285,11 @@ int PoolDevice::Transmit_Prep(uint8_t *data)
     data[i++] = (this->RandomFactor & 0x00ff0000) >> 16;
     data[i++] = (this->RandomFactor & 0xff000000) >> 24;
     return i; //return data length 14
+}
+
+int PoolDevice::Transmit_Size()
+{
+    return 14; // same as i in Transmit_Prep
 }
 
 int PoolDevice::From_Transmition(uint8_t *data)

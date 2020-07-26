@@ -13,6 +13,8 @@ const UDPPORT = 8888;
 const tcpport = 1602;
 var recivedfrom = []
 var broadcast;
+var controlRoomBroadcast;
+
 
 console.log(selfIP);
 console.log(broadCastTarget);
@@ -142,14 +144,6 @@ function bin2String(array) {
 
 
 
-function broadcastNew() {
-    let buf1 = Buffer.from("ESP32", 'ascii');
-    var buf2 = Buffer.alloc(1);
-    buf2.writeUInt8(17, 0);
-    let buf3 = Buffer.from(selfIP, 'ascii');
-    var buf = Buffer.concat([buf1, buf2, buf3]);
-    UDP_Client.send(buf, 0, buf.length, UDPPORT, broadCastTarget);//"169.254.205.177"
-}
 
 
 
@@ -246,11 +240,11 @@ function parseBigData(buf) {
         element.x = TwosCompliment16bit(buf[i++], buf[i++])
         element.y = TwosCompliment16bit(buf[i++], buf[i++])
         element.z = TwosCompliment16bit(buf[i++], buf[i++])
-        if (Math.abs(element.x) > 500) 
+        if (Math.abs(element.x) > 500)
             element.x = lastBAL.x
-        if (Math.abs(element.y) > 500) 
+        if (Math.abs(element.y) > 500)
             element.y = lastBAL.y
-        if (Math.abs(element.z) > 500) 
+        if (Math.abs(element.z) > 500)
             element.z = lastBAL.z
         if (balinit) {
             if (Math.abs(element.x - lastBAL.x) > 170)
@@ -344,10 +338,32 @@ server.on('connection', function (socket) {
 });
 
 
+function broadcastNew() {
+    let buf1 = Buffer.from("ESP32", 'ascii');
+    var buf2 = Buffer.alloc(1);
+    buf2.writeUInt8(17, 0);
+    let buf3 = Buffer.from(selfIP, 'ascii');
+    var buf = Buffer.concat([buf1, buf2, buf3]);
+    UDP_Client.send(buf, 0, buf.length, UDPPORT, broadCastTarget);//"169.254.205.177"
+}
+
+function broadcastControlRoomDiscover() {
+    let buf1 = Buffer.from("CONTROL", 'ascii');
+    var buf2 = Buffer.alloc(1);
+    buf2.writeUInt8(17, 0);
+    let buf3 = Buffer.from("DISCOVER", 'ascii');
+    var buf4 = Buffer.alloc(1);
+    buf4.writeUInt8(17, 0);
+    let buf5 = Buffer.from(selfIP, 'ascii');
+    var buf = Buffer.concat([buf1, buf2, buf3, buf4, buf5]);
+    UDP_Client.send(buf, 0, buf.length, UDPPORT, broadCastTarget);//"169.254.205.177"
+}
+
 UDP_Client.bind(function () {
     UDP_Client.setBroadcast(true)
     UDP_Client.setMulticastTTL(255);
     broadcast = setInterval(broadcastNew, 1000);
+    controlRoomBroadcast = setInterval(broadcastControlRoomDiscover, 2000);
 });
 
 const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
@@ -420,13 +436,19 @@ var http = require('http');
 //create a server object:
 http.createServer(function (request, response) {
     var filePath = '.' + request.url;
+    console.log(request.url);
     if (request.url == '/data') {
         let respobj = { ACC: accbufferAZ, ACCEL: accbufferEL, ACCBAL: accbufferBAL, ELT: ELTEmpBuffer, AZT: AZTEmpBuffer }
         let respstr = JSON.stringify(respobj)
         //console.log(respobj)
         response.writeHead(200, { 'Content-Type': 'application/json' });
         response.end(respstr, 'utf-8');
-    } else {
+    }
+    else if (request.url == '/update') {
+        console.log(request);
+        response.end("respstr", 'utf-8');
+    }
+    else {
         if (filePath == './')
             filePath = './index.html';
 

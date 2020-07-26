@@ -2,6 +2,7 @@
 #include <atomic>
 #include <queue>
 #include <array>
+#include <myConfig.hpp>
 
 class SPI_DEVICE
 {
@@ -105,11 +106,11 @@ private:
 struct ADXLbuffer
 {
     ADXLbuffer(size_t);
-    std::atomic<bool> writing;
-    std::atomic<bool> reading;
+    std::atomic<bool> writing{false};
+    std::atomic<bool> reading{false};
     std::atomic<bool> needsEmptied{false};
-    size_t maxsize = 1600;
-    std::queue<acc, CyclicArray<acc, 1600>> buffer;
+    size_t maxsize = ACC_BUFFER_SIZE;
+    std::queue<acc, CyclicArray<acc, ACC_BUFFER_SIZE>> buffer;
 };
 
 //use in acc measurement thread only for when ADXLbuffer is being read by main thread

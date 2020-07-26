@@ -54,3 +54,8 @@
 #define UDPPORT 8888
 #define DATA_TRANSMIT_ID 131
 #define POOL_DEVICE_TRANSMIT_ID  130
+
+#define ACC_BUFFER_SIZE 1600
+
+#define WIFIssid = "ESP32-Access-Point";
+#define WIFIpassword "123456789"

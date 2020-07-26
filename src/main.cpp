@@ -28,7 +28,7 @@ TODO: https://medium.com/@supotsaeea/esp32-reboot-system-when-watchdog-timeout-4
 
 #include <Arduino.h>
 #include <Ethernet.h>
-#include "../lib/picohttpparser/picohttpparser.h"
+//#include "../lib/picohttpparser/picohttpparser.h"
 #include <EthernetHelp.hpp>
 #include <spihelp.hpp>
 #include <TempHelp.hpp>
@@ -59,9 +59,9 @@ SPIClass *SecondarySPI = NULL; // secondary, mostly unused by library code
 ADXL345_SPI *accSPI_AZ;
 ADXL345_SPI *accSPI_EL;
 ADXL345_SPI *accSPI_Ballence;
-ADXLbuffer acc1buffer(1600); //; //= ADXLbuffer(1600);
-ADXLbuffer acc2buffer(1600);
-ADXLbuffer acc3buffer(1600);
+ADXLbuffer acc1buffer(ACC_BUFFER_SIZE); //; //= ADXLbuffer(1600);
+ADXLbuffer acc2buffer(ACC_BUFFER_SIZE);
+ADXLbuffer acc3buffer(ACC_BUFFER_SIZE);
 
 short AZTempBuf[tempBufSize];
 uint16_t AZTempBufSize = 0;
@@ -128,8 +128,8 @@ void TimerCallback(TimerHandle_t xTimer)
     }
 }
 
-TickType_t CheckUDPTicks = pdMS_TO_TICKS(250);
-TickType_t CheckEthernetTicks = pdMS_TO_TICKS(250);
+TickType_t CheckUDPTicks = pdMS_TO_TICKS(100);
+TickType_t CheckEthernetTicks = pdMS_TO_TICKS(100);
 TickType_t BroadcastUDPTicks = pdMS_TO_TICKS(1000);
 TickType_t MeasureAZTempTicks = pdMS_TO_TICKS(1000);
 TickType_t MeasureELTempTicks = pdMS_TO_TICKS(1000);
@@ -277,7 +277,7 @@ void loop()
                     {
                         msg[j] = (char)data[j];
                         Serial.print(data[j]);
-                        Serial.print("   ");
+                        Serial.print("  ");
                         Serial.println(msg[j]);
                     }
                     Serial.print("message is bytes long");
@@ -382,11 +382,11 @@ void loop()
         SendDataToControlRoom = false;
         uint32_t dataSize = calcTransitSize(&acc1buffer, &acc2buffer, &acc3buffer, AZTempBufSize, ELTempBufSize); // determine the size of the array that needs to be alocated
         uint8_t *dataToSend;
-     //   uint32_t heapspace = xPortGetFreeHeapSize();
-      //  uint32_t freeblock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-      //  Serial.println(heapspace);
-      //  Serial.println(freeblock);
-      //  Serial.println(dataSize);
+        //   uint32_t heapspace = xPortGetFreeHeapSize();
+        //  uint32_t freeblock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+        //  Serial.println(heapspace);
+        //  Serial.println(freeblock);
+        //  Serial.println(dataSize);
         dataToSend = (uint8_t *)malloc(dataSize * sizeof(uint8_t)); //malloc needs to be used becaus stack size on the loop task is about 4k so this needs to go on the heap
         prepairTransit(dataToSend, dataSize, &acc1buffer, &acc2buffer, &acc3buffer, AZTempBuf, AZTempBufSize, ELTempBuf, ELTempBufSize);
         AZTempBufSize = 0;

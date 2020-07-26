@@ -1,3 +1,0 @@
-[submodule "lib/picohttpparser"]
-        path = lib/picohttpparser
-        url = git@github.com:h2o/picohttpparser.git
