@@ -1,4 +1,5 @@
 'use strict';
+
 //npm install low-pass-filter -g
 var os = require('os');
 var ifaces = os.networkInterfaces();
@@ -280,9 +281,11 @@ function parseBigData(buf) {
 // socket dedicated to that client.
 server.on('connection', function (socket) {
     let bigdata = false;
+    let smalldata  =false;
     let arr = Buffer.alloc(1);
     let expectedSize = -1;
     let parsed = false;
+    let adr =""
     // The server can also receive data from the client by reading from its socket.
     socket.on('data', function (chunk) {
         //console.log(`Data received from client: ${chunk.length} bytes long`);
@@ -304,20 +307,23 @@ server.on('connection', function (socket) {
                 }
                 socket.end();
             }
+        } else if (smalldata){
+            arr = Buffer.concat([arr, chunk]);
+            console.log(arr);
         }
         else if (chunk[0] === 131) {
             bigdata = true;
             arr = chunk;
+            adr = socket.remoteAddress
             //console.log(`data connection established with ${expectedSize} bytes of data first backet:${chunk.length}`);
         }
         else if (chunk[0] === selfDev.OBJID) {
-            let dev1 = new pooldev(socket.remoteAddress);
-            dev1.From_Transmition(chunk);
-            console.log(dev1);
+            smalldata = true
+            arr = chunk;
+            console.log(arr);
         } else {
             console.log(`An unknown connection has been established chunk[0] ${chunk[0]}`);
         }
-
         //socket.write('Acknoledge');
     });
 
@@ -329,6 +335,14 @@ server.on('connection', function (socket) {
               parseBigData(arr);
               parsed = true;
           }*/
+          if(smalldata){
+              console.log(adr);
+              console.log(arr);
+              let dev1 = new pooldev(adr);
+              dev1.From_Transmition(arr);
+              console.log(dev1);
+          }
+
     });
 
     // Don't forget to catch error, for your own sake.
@@ -362,12 +376,13 @@ function broadcastControlRoomDiscover() {
 UDP_Client.bind(function () {
     UDP_Client.setBroadcast(true)
     UDP_Client.setMulticastTTL(255);
-    broadcast = setInterval(broadcastNew, 1000);
-    controlRoomBroadcast = setInterval(broadcastControlRoomDiscover, 2000);
+    broadcast = setInterval(broadcastNew, 2500);
+    controlRoomBroadcast = setInterval(broadcastControlRoomDiscover, 5000);
 });
 
 const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
 socket.bind(UDPPORT);
+//socket.bind(UDPPORT, selfIP);
 socket.on("listening", function () {
     socket.addMembership(MULTICAST_ADDR);
     const address = socket.address();
@@ -380,10 +395,12 @@ socket.on("listening", function () {
 
 
 socket.on("message", function (message, rinfo) {
+    
     if (selfIP == rinfo.address) {
         return;
     }
     message = bin2String(message);
+    console.log(message);
     //console.log(message)
     if (message[0] === "DBG") {
         console.info(`debug from: ${rinfo.address}:${rinfo.port} - ${message[1]}`);
@@ -427,7 +444,7 @@ socket.on("message", function (message, rinfo) {
     });
 });
 
-
+//*
 
 var fs = require('fs');
 var path = require('path');
@@ -436,7 +453,7 @@ var http = require('http');
 //create a server object:
 http.createServer(function (request, response) {
     var filePath = '.' + request.url;
-    console.log(request.url);
+    //console.log(request.url);
     if (request.url == '/data') {
         let respobj = { ACC: accbufferAZ, ACCEL: accbufferEL, ACCBAL: accbufferBAL, ELT: ELTEmpBuffer, AZT: AZTEmpBuffer }
         let respstr = JSON.stringify(respobj)
@@ -497,3 +514,4 @@ http.createServer(function (request, response) {
         });
     }
 }).listen(8080);
+//*/

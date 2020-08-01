@@ -27,6 +27,8 @@ public:
     std::atomic<bool> bufferFull{true};
     uint8_t interruptPin;
     ADXL345_SPI(SPIClass *, uint8_t, uint8_t);
+    ADXL345_SPI(uint8_t, uint8_t);
+    void setupIntrupts();
     void init();
     /*
     called from interruptCallbackAZ/EL/Ballence
@@ -120,6 +122,8 @@ struct ADXLminibuffer
     size_t maxsize = 160;
     std::queue<acc, CyclicArray<acc, 160>> buffer;
 };
+
+void initilizeSpiBuss();
 
 void spiWriteSingleADXL(SPI_DEVICE, uint8_t, uint8_t);
 

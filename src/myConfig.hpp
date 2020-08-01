@@ -1,25 +1,3 @@
-/*
-#define PrimarySPI_MISO 19
-#define PrimarySPI_MOSI 23
-#define PrimarySPI_SCLK 18
-#define PrimarySPI_SS 5
-
-#define SecondarySPI_MISO 12
-#define SecondarySPI_MOSI 13
-#define SecondarySPI_SCLK 14
-#define SecondarySPI_SS -1
-
-#define AdxlSS_AZ 15
-#define AdxlSS_EL 32
-#define AdxlSS_Ballence 17
-
-#define AdxlInt_AZ 25
-#define AdxlInt_EL 26
-#define AdxlInt_Ballence 27
-
-#define AZ_Temp_Line 4
-#define EL_Temp_Line 16
-*/
 // https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
 // 20, 24, 28, 29, 30, 31 are not exposed on the qfn package
 // 0, 2, 5, 12, 15 can affect boot sequence if used improperly
@@ -49,13 +27,16 @@
 
 #define AZ_Temp_Line 16
 #define EL_Temp_Line 17
-
-#define TCPPORT 1602
-#define UDPPORT 8888
+//config
+#define TCP_PORT 1602
+#define UDP_PORT 8888
+#define WIFI_PORT 80
 #define DATA_TRANSMIT_ID 131
 #define POOL_DEVICE_TRANSMIT_ID  130
+#define MESSAGE_DELIMINER_CODE_ASCII 17//device code one used as deliminer in messages so any standard ascii char can be part of the message
 
 #define ACC_BUFFER_SIZE 1600
 
-#define WIFIssid = "ESP32-Access-Point";
+#define WIFIssid "ESP32-Access-Point"
 #define WIFIpassword "123456789"
+#define WIFI_HOST "esp32"

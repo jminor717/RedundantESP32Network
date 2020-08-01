@@ -6,6 +6,8 @@
 
 std::map<int, ADXL345_SPI *> callbacks;
 
+SPIClass *SecondarySPI = NULL; // secondary, mostly unused by library code so free to use for this code
+
 void IRAM_ATTR interruptCallbackAZ()
 {
     callbacks[AdxlInt_AZ]->interruptCallback();
@@ -28,24 +30,56 @@ ADXL345_SPI::ADXL345_SPI(SPIClass *bus, uint8_t csLine, uint8_t inturuptLine)
     this->interruptPin = inturuptLine;
     pinMode(this->interruptPin, INPUT_PULLUP);
     //callbacks[interruptPin] = this->interruptCallback();
-    callbacks[interruptPin] = this;
-    if (inturuptLine == AdxlInt_AZ)
+    callbacks[this->interruptPin] = this;
+    switch (this->interruptPin)
     {
+    case AdxlInt_AZ:
         attachInterrupt(this->interruptPin, interruptCallbackAZ, RISING);
-    }
-    if (inturuptLine == AdxlInt_EL)
-    {
+        break;
+    case AdxlInt_EL:
         attachInterrupt(this->interruptPin, interruptCallbackEL, RISING);
-    }
-    if (inturuptLine == AdxlInt_Ballence)
-    {
+        break;
+    case AdxlInt_Ballence:
         attachInterrupt(this->interruptPin, interruptCallbackBallence, RISING);
+        break;
+    default:
+        break;
     }
+}
+
+ADXL345_SPI::ADXL345_SPI(uint8_t csLine, uint8_t inturuptLine)
+{
+    this->Buss = SecondarySPI;
+    this->cs_Line = csLine;
+    this->interruptPin = inturuptLine;
 }
 
 void IRAM_ATTR ADXL345_SPI::interruptCallback()
 {
     this->bufferFull = true;
+}
+
+// idealy this should be called between the constructor and init
+//if constructor using SPIClass is called this method should not be
+void ADXL345_SPI::setupIntrupts()
+{
+    pinMode(this->interruptPin, INPUT_PULLUP);
+    //callbacks[interruptPin] = this->interruptCallback();
+    callbacks[this->interruptPin] = this;
+    switch (this->interruptPin)
+    {
+    case AdxlInt_AZ:
+        attachInterrupt(this->interruptPin, interruptCallbackAZ, RISING);
+        break;
+    case AdxlInt_EL:
+        attachInterrupt(this->interruptPin, interruptCallbackEL, RISING);
+        break;
+    case AdxlInt_Ballence:
+        attachInterrupt(this->interruptPin, interruptCallbackBallence, RISING);
+        break;
+    default:
+        break;
+    }
 }
 
 void ADXL345_SPI::init()
@@ -71,6 +105,27 @@ void ADXL345_SPI::init()
     delayMicroseconds(20);
     spiWriteSingleADXL(*this, ADXL345_INT_MAP, (uint8_t)0); // map interrupts to INT1
 }
+
+
+//this should be called before constructing any devices that use the spi buss
+void initilizeSpiBuss()
+{
+    SecondarySPI = new SPIClass(HSPI);
+    //SCLK = 14, MISO = 12, MOSI = 13, SS = 15
+    SecondarySPI->begin(SecondarySPI_SCLK, SecondarySPI_MISO, SecondarySPI_MOSI, SecondarySPI_SS);
+    /*
+    accSPI_EL = new ADXL345_SPI(SecondarySPI, AdxlSS_AZ, AdxlInt_AZ);
+    accSPI_EL->init();
+
+    accSPI_AZ = new ADXL345_SPI(SecondarySPI, AdxlSS_EL, AdxlInt_EL);
+    accSPI_AZ->init();
+
+    accSPI_Ballence = new ADXL345_SPI(SecondarySPI, AdxlSS_Ballence, AdxlInt_Ballence);
+    accSPI_Ballence->init();
+    accSPI_Ballence->spi_clock_speed = 200000;
+*/
+}
+
 /**
  * 
  * 

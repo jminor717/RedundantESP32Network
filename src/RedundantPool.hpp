@@ -1,6 +1,7 @@
 #include <atomic>
 #include <queue>
 #include <myConfig.hpp>
+#include <Ethernet.h>
 using namespace std;
 class PoolDevice
 {
@@ -24,11 +25,13 @@ public:
     static std::atomic<bool> broadcastIP;
     static std::atomic<bool> ControlRoomFound;
     static std::atomic<bool> InUpdateMode;
+    static std::atomic<bool> CreateNewPool;
     std::atomic<bool> validPool;
     PoolDevice self;
     deque<PoolDevice *> pool;
 
     IPAddress UDPBroadcastAddress;
+    IPAddress SelfStartingAddress;
     uint16_t UDPport;
     EthernetUDP Udp;
     IPAddress ControlRoomIP;
@@ -38,4 +41,5 @@ public:
     void CheckUDPServer();
     void UDPSetup();
     void broadcastMessage(char *);
+    bool createPool();
 };
