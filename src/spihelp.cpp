@@ -6,7 +6,7 @@
 
 std::map<int, ADXL345_SPI *> callbacks;
 
-SPIClass *SecondarySPI = NULL; // secondary, mostly unused by library code so free to use for this code
+//SPIClass *SecondarySPI = NULL; // secondary, mostly unused by library code so free to use for this code
 
 void IRAM_ATTR interruptCallbackAZ()
 {
@@ -47,9 +47,9 @@ ADXL345_SPI::ADXL345_SPI(SPIClass *bus, uint8_t csLine, uint8_t inturuptLine)
     }
 }
 
-ADXL345_SPI::ADXL345_SPI(uint8_t csLine, uint8_t inturuptLine)
+ADXL345_SPI::ADXL345_SPI(SPIClass *bus, uint8_t csLine, uint8_t inturuptLine, bool dud)
 {
-    this->Buss = SecondarySPI;
+    this->Buss = bus;
     this->cs_Line = csLine;
     this->interruptPin = inturuptLine;
 }
@@ -89,6 +89,7 @@ void ADXL345_SPI::init()
         return;
     }
     pinMode(this->cs_Line, OUTPUT); //set chipselect to output mode
+    //Serial.println(this->cs_Line);
     spiWriteSingleADXL(*this, ADXL345_POWER_CTL, (uint8_t)0);
     delayMicroseconds(20);
     spiWriteSingleADXL(*this, ADXL345_POWER_CTL, (uint8_t)0b00001000); //place in measurement mode
@@ -104,33 +105,10 @@ void ADXL345_SPI::init()
     spiWriteSingleADXL(*this, ADXL345_INT_ENABLE, (uint8_t)0b00000011); // water mark and overrun intureupt enable
     delayMicroseconds(20);
     spiWriteSingleADXL(*this, ADXL345_INT_MAP, (uint8_t)0); // map interrupts to INT1
+    //Serial.println("this->cs_Line");
 }
 
 
-//this should be called before constructing any devices that use the spi buss
-void initilizeSpiBuss()
-{
-    SecondarySPI = new SPIClass(HSPI);
-    //SCLK = 14, MISO = 12, MOSI = 13, SS = 15
-    SecondarySPI->begin(SecondarySPI_SCLK, SecondarySPI_MISO, SecondarySPI_MOSI, SecondarySPI_SS);
-    /*
-    accSPI_EL = new ADXL345_SPI(SecondarySPI, AdxlSS_AZ, AdxlInt_AZ);
-    accSPI_EL->init();
-
-    accSPI_AZ = new ADXL345_SPI(SecondarySPI, AdxlSS_EL, AdxlInt_EL);
-    accSPI_AZ->init();
-
-    accSPI_Ballence = new ADXL345_SPI(SecondarySPI, AdxlSS_Ballence, AdxlInt_Ballence);
-    accSPI_Ballence->init();
-    accSPI_Ballence->spi_clock_speed = 200000;
-*/
-}
-
-/**
- * 
- * 
- * @param dev
-*/
 void spiWriteSingleADXL(SPI_DEVICE dev, uint8_t adr, uint8_t daa)
 {
     dev.Buss->beginTransaction(SPISettings(dev.spi_clock_speed, MSBFIRST, dev.spi_mode)); //sdi rising, sdo falling
@@ -167,6 +145,19 @@ accbuffer emptyAdxlBuffer(SPI_DEVICE dev)
     dev.Buss->transferBytes(IN, outBuff, 2);
     digitalWrite(dev.cs_Line, HIGH);
     uint8_t fifolength = outBuff[1];
+    Serial.print("|");
+    Serial.print(IN[0]);
+    Serial.print("|");
+    Serial.print(IN[1]);
+    Serial.print("|");
+    Serial.print(outBuff[0]);
+    Serial.print("|");
+    Serial.println(fifolength);
+    if (fifolength > 32)
+    {
+        buf.lenght = 0;
+        return buf;
+    }
     buf.lenght = fifolength;
 
     for (int v = 0; v < fifolength; v++)

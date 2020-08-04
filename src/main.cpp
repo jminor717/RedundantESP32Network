@@ -38,6 +38,7 @@ TODO: https://medium.com/@supotsaeea/esp32-reboot-system-when-watchdog-timeout-4
 
 bool isMaster = false;
 bool poolActive = false;
+int votesForMaster = 0;
 
 //ethernet data
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
@@ -51,7 +52,8 @@ PoolManagment fullpool(
     UDP_PORT);
 
 //spi classes
-SPIClass *PrimarySPI = NULL; // primary spi buss, used as the default for most libraries
+SPIClass *PrimarySPI = NULL;   // primary spi buss, used as the default for most libraries
+SPIClass *SecondarySPI = NULL; // secondary, mostly unused by library code so free to use for this code
 
 ADXL345_SPI *accSPI_AZ;
 ADXL345_SPI *accSPI_EL;
@@ -72,54 +74,47 @@ void setup()
 {
     Serial.begin(115200);
 
-    startTimersNoPool();
-    initilizeSpiBuss(); //needs to be called befor initilizing spi sensors
-    accSPI_EL = new ADXL345_SPI(AdxlSS_AZ, AdxlInt_AZ);
-    //accSPI_EL->init();
-
-    accSPI_AZ = new ADXL345_SPI(AdxlSS_EL, AdxlInt_EL);
-    //accSPI_AZ->init();
-
-    accSPI_Ballence = new ADXL345_SPI(AdxlSS_Ballence, AdxlInt_Ballence);
-    //accSPI_Ballence->init();
-    accSPI_Ballence->spi_clock_speed = 200000;
-
+    //initilizeSpiBuss(); //needs to be called befor initilizing spi sensors
+    PrimarySPI = new SPIClass(HSPI);
     // initialize the spi bus used by Ethernet.h to have the pinnout we specify
     SPI.begin(PrimarySPI_SCLK, PrimarySPI_MISO, PrimarySPI_MOSI, PrimarySPI_SS);
     // You can use Ethernet.init(pin) to configure the CS pin
     ////SCLK = 18, MISO = 19, MOSI = 23, SS = 5
     Ethernet.init(PrimarySPI_SS);
     // initialize the ethernet device
+    Serial.println("starting...");
     //Ethernet.begin(mac);
     // Ethernet.begin(mac, fullpool.SelfStartingAddress, gateway, gateway, subnet);
-    //fullpool.self.Address = findOpenAdressAfterStart(mac, fullpool.SelfStartingAddress, gateway, subnet);
-    fullpool.self.Address = findOpenAdressAfterStart();
+    fullpool.self.Address = findOpenAdressAfterStart(fullpool.SelfStartingAddress, gateway, subnet);
+    //fullpool.self.Address = findOpenAdressAfterStart();
     // Open serial communications and wait for port to open:
+    Serial.print("ethernet server address: ");
+    Serial.println(fullpool.self.Address.toString());
+    Serial.print("ethernet server port:");
+    Serial.println(TCP_PORT);
 
-
-
+    startTimersNoPool();
     // start listening for clients
     server.begin();
     fullpool.UDPSetup();
-    Serial.print("ethernet server address:");
-    Serial.println(Ethernet.localIP());
-    Serial.print("ethernet server port:");
-    Serial.println(TCP_PORT);
 }
 int tem = 0;
 void loop()
 {
-    //char data2[30];
+
+    char data2[30];
     if (CheckEthernet)
     {
         CheckEthernet = false;
         // wait for a new client:
+
         EthernetClient client = server.available();
         // when the client sends the first byte, say hello:
         if (client)
         {
             if (client.available())
             {
+                //char printbuffer[100];
                 size_t bytes = client.available();
                 uint8_t *ptr;
                 uint8_t data[bytes] = {0};
@@ -128,126 +123,117 @@ void loop()
                 //int len = processOneTimeConnection(client, bytes, data, Serial);
                 //if (len == -1 || len == -2)
                 // {
-
-                char msg[bytes];
-
-                if (data[0] == fullpool.self.OBJID)
+                //client.
+                //char msg[bytes];
+                /* for (int j = 0; j < bytes; j++)
                 {
-                    PoolDevice dev1;
-                    Serial.println("remote device found");
-                    dev1.From_Transmition(data);
-                    Serial.print("remote device address: ");
-                    Serial.println(dev1.Address.toString().c_str());
-                    Serial.print("remote device health: ");
-                    Serial.println(dev1.Health);
-                    Serial.print("remote device random factor: ");
-                    Serial.println(dev1.RandomFactor);
-                    bool found = false;
-                    for (size_t i = 0; i < fullpool.pool.size(); i++)
-                    {
-                        PoolDevice *dev = fullpool.pool.at(i);
-                        if (dev->Address == dev1.Address)
-                        {
-                            dev->Health = dev1.Health;
-                            dev->RandomFactor = dev1.RandomFactor;
-                            dev->IsMaster = dev1.IsMaster.load();
-                            found = true;
-                        }
-                    }
-                    if (!found)
-                    {
-                        fullpool.pool.push_back(new PoolDevice());
-                        PoolDevice *dev = fullpool.pool.back();
-                        dev->Health = dev1.Health;
-                        dev->RandomFactor = dev1.RandomFactor;
-                        dev->IsMaster = dev1.IsMaster.load();
-                    }
-                }
-                else
-                {
-                    /* for (int j = 0; j < bytes; j++)
-                    {
-                        msg[j] = (char)data[j];
-                        Serial.print(data[j]);
-                        Serial.print("  ");
-                        Serial.println(msg[j]);
-                    }*/
-                    Serial.print("message is bytes long");
-                    Serial.println(bytes);
-                }
+                    msg[j] = (char)data[j];
+                    Serial.print(data[j]);
+                    Serial.print("  ");
+                    Serial.println(msg[j]);
+                }*/
+                Serial.print("message is bytes long");
+                Serial.println(bytes);
 
-                client.write("acknoledge");
+                //client.write("acknoledge");
                 // give time to receive the data
-                delay(2);
+                //delay(2);
                 // close the connection:
-                client.stop();
+                //client.stop();
                 //  }
             }
         }
     }
-
-    if (accSPI_AZ->bufferFull)
+    if (fullpool.self.IsMaster)
     {
-        accSPI_AZ->bufferFull = false;
-        // Serial.print("AZ_");
-        accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_AZ);
-        for (size_t i = 0; i < buffer.lenght; i++)
+        if (accSPI_AZ->bufferFull)
         {
-            acc1buffer.buffer.push(buffer.buffer[i]);
+            Serial.print("A");
+            accSPI_AZ->bufferFull = false;
+            accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_AZ);
+            for (size_t i = 0; i < buffer.lenght; i++)
+            {
+                acc1buffer.buffer.push(buffer.buffer[i]);
+            }
+            accSPI_AZ->LastEmptyBuffer = esp_timer_get_time();
         }
-        // sprintf(data2, "%d, %d, %d,    1    %d", acc1buffer.buffer.front().x, acc1buffer.buffer.front().y, acc1buffer.buffer.front().z, acc1buffer.buffer.size());
-        // Serial.println(data2);
-        //acc1buffer.buffer.pop();
-    }
-    if (accSPI_EL->bufferFull)
-    {
-        accSPI_EL->bufferFull = false;
-        accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_EL);
-        for (size_t i = 0; i < buffer.lenght; i++)
+        if (accSPI_EL->bufferFull)
         {
-            acc2buffer.buffer.push(buffer.buffer[i]);
+            Serial.print("E");
+            accSPI_EL->bufferFull = false;
+            accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_EL);
+            for (size_t i = 0; i < buffer.lenght; i++)
+            {
+                acc2buffer.buffer.push(buffer.buffer[i]);
+            }
+            accSPI_EL->LastEmptyBuffer = esp_timer_get_time();
         }
-    }
-    if (accSPI_Ballence->bufferFull)
-    {
-        accSPI_Ballence->bufferFull = false;
-        accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_Ballence);
-        for (size_t i = 0; i < buffer.lenght; i++)
+        if (accSPI_Ballence->bufferFull)
         {
-            acc3buffer.buffer.push(buffer.buffer[i]);
+            Serial.print("B");
+            accSPI_Ballence->bufferFull = false;
+            accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_Ballence);
+            for (size_t i = 0; i < buffer.lenght; i++)
+            {
+                acc3buffer.buffer.push(buffer.buffer[i]);
+            }
+            accSPI_Ballence->LastEmptyBuffer = esp_timer_get_time();
         }
     }
-
     if (measureAZTemp)
     {
         measureAZTemp = false;
+        int16_t sssss = AZTempSense.read();
         if (AZTempBufSize >= tempBufSize - 2)
         {
-            AZTempBuf[AZTempBufSize] = AZTempSense.read();
+            AZTempBuf[AZTempBufSize] = sssss;
         }
         else
         {
-            AZTempBuf[AZTempBufSize++] = AZTempSense.read();
+            AZTempBuf[AZTempBufSize++] = sssss;
         }
-        //sprintf(data2, "AZ: %d", AZTempSense.read());
-        //Serial.print(data2);
+        sprintf(data2, "AZ: %d", sssss);
+        //!    fullpool.broadcastMessage(data2);
     }
     if (measureELTemp)
     {
         measureELTemp = false;
+        int16_t sssss = ELTempSense.read();
         if (ELTempBufSize >= tempBufSize - 2)
         {
-            ELTempBuf[ELTempBufSize] = ELTempSense.read();
+            ELTempBuf[ELTempBufSize] = sssss;
         }
         else
         {
-            ELTempBuf[ELTempBufSize++] = ELTempSense.read();
+            ELTempBuf[ELTempBufSize++] = sssss;
         }
+        sprintf(data2, "EL: %d", sssss);
+        //!    fullpool.broadcastMessage(data2);
     }
     if (CheckUDP)
     {
         CheckUDP = false;
         fullpool.CheckUDPServer();
+        if (DHCPRefresh) //dont need to check this every loop so only to it after checking udp
+        {
+            byte rtnVal = Ethernet.maintain();
+
+            switch (rtnVal)
+            {
+            case 1:
+                Serial.println(F("\r\nDHCP renew fail"));
+                break;
+            case 2:
+                //Serial.println(F("\r\nDHCP renew ok"));
+                break;
+            case 3:
+                Serial.println(F("\r\nDHCP rebind fail"));
+                break;
+            case 4:
+                //Serial.println(F("\r\nDHCP rebind ok"));
+                break;
+            }
+        }
     }
     if (BroadcastUDP)
     {
@@ -255,7 +241,87 @@ void loop()
         fullpool.sendUDPBroadcast();
         if (PoolManagment::CreateNewPool) //we only want to do this once and we can do it after we stop UDP broadcasts
         {
+            char printbuffer[100];
             PoolManagment::CreateNewPool = false;
+            //fullpool.createPool();
+            isMaster = true;
+            // sprintf(printbuffer, "voting started with %u devices", fullpool.pool.size());
+            //!    fullpool.broadcastMessage(printbuffer);
+            for (size_t i = 0; i < fullpool.pool.size(); i++)
+            {
+                PoolDevice *dev = fullpool.pool.at(i);
+
+                /* code */
+                bool vote = false;
+                if (fullpool.self.Health == dev->Health)
+                {
+                    vote = fullpool.self.RandomFactor > dev->RandomFactor;
+                }
+                else
+                {
+                    vote = fullpool.self.Health > dev->Health;
+                }
+                // sprintf(printbuffer, "dev %s, rf: %u, vote: %u, ismat: %u, myrf: %u", dev->Address.toString().c_str(), dev->RandomFactor, vote, dev->IsMaster, fullpool.self.RandomFactor);
+                //!     fullpool.broadcastMessage(printbuffer);
+                if (dev->IsMaster)
+                {
+                    vote = false;
+                }
+                if (!vote)
+                {
+                    isMaster = false;
+                }
+                else
+                {
+                    //sprintf(printbuffer, "i was voted for by:  %s ", dev->Address.toString().c_str());
+                    //!      fullpool.broadcastMessage(printbuffer);
+                }
+            }
+            if (isMaster)
+            {
+                //pinMode(SecondarySPI_MISO, INPUT);
+                fullpool.broadcastMessage("i have been elected master");
+                /*gpio_set_level(GPIO_NUM_27, 0);
+                delayMicroseconds(20);
+                gpio_set_level(GPIO_NUM_27, 1);
+                delayMicroseconds(20);
+                gpio_set_level(GPIO_NUM_27, 0);*/
+                SecondarySPI = new SPIClass(HSPI); //VSPI ,HSPI
+                //SCLK = 14, MISO = 12, MOSI = 13, SS = 15
+                SecondarySPI->begin(SecondarySPI_SCLK, SecondarySPI_MISO, SecondarySPI_MOSI, SecondarySPI_SS);
+
+                accSPI_EL = new ADXL345_SPI(SecondarySPI, AdxlSS_AZ, AdxlInt_AZ);
+                accSPI_EL->init();
+
+                accSPI_AZ = new ADXL345_SPI(SecondarySPI, AdxlSS_EL, AdxlInt_EL);
+                accSPI_AZ->init();
+
+                accSPI_Ballence = new ADXL345_SPI(SecondarySPI, AdxlSS_Ballence, AdxlInt_Ballence);
+                accSPI_Ballence->init();
+                //accSPI_Ballence->spi_clock_speed = 200000;
+
+                startMeasuringTemp();
+                startTransmitingToControlroom();
+                fullpool.self.IsMaster = true;
+                delay(100);
+                startACCRefresh();
+                //pinMode(SecondarySPI_MISO, INPUT_PULLUP);
+            }
+            else
+            {
+                //SecondarySPI->end();
+
+                pinMode(SecondarySPI_MISO, INPUT);
+                pinMode(SecondarySPI_MOSI, INPUT);
+                pinMode(SecondarySPI_SCLK, INPUT);
+
+                pinMode(AdxlSS_AZ, INPUT);
+                pinMode(AdxlSS_EL, INPUT);
+                pinMode(AdxlSS_Ballence, INPUT);
+                //pinMode(AdxlInt_AZ, INPUT_PULLDOWN);
+                //pinMode(AdxlInt_EL, INPUT_PULLDOWN);
+                //pinMode(AdxlInt_Ballence, INPUT_PULLDOWN);
+            }
         }
     }
     if (SendDataToControlRoom)
@@ -273,12 +339,37 @@ void loop()
         prepairTransit(dataToSend, dataSize, &acc1buffer, &acc2buffer, &acc3buffer, AZTempBuf, AZTempBufSize, ELTempBuf, ELTempBufSize);
         AZTempBufSize = 0;
         ELTempBufSize = 0;
-        FowardDataToControlRoom(dataToSend, dataSize, fullpool.ControlRoomIP, TCP_PORT);
-        // this includes a flush and can be a very lengthy process the ethernet coms should at some point be put on their own thread
+        if (dataSize > 15)
+        {
+            //Serial.println(dataSize);
+            //Serial.println(fullpool.ControlRoomIP.toString());
+            //fullpool.SendPoolInfo(fullpool.ControlRoomIP, false);
+            //fullpool.FowardDataToControlRoom(dataToSend, dataSize);
+            FowardDataToControlRoom(dataToSend, dataSize, fullpool.ControlRoomIP, TCP_PORT);
+            // this includes a flush and can be a very lengthy process the ethernet coms should at some point be put on their own thread
+        }
         free(dataToSend);
     }
     if (PoolManagment::InUpdateMode)
     {
         handleWifiClient();
+    }
+    if (ACCRefresh)
+    {
+        ACCRefresh = false;
+        Serial.println("refreshing ACC");
+        int64_t now = esp_timer_get_time();
+        if ((now - 10000) > accSPI_EL->LastEmptyBuffer)
+        {
+            accSPI_EL->bufferFull = true;
+        }
+        if ((now - 10000) > accSPI_AZ->LastEmptyBuffer)
+        {
+            accSPI_AZ->bufferFull = true;
+        }
+        if ((now - 10000) > accSPI_Ballence->LastEmptyBuffer)
+        {
+            accSPI_Ballence->bufferFull = true;
+        }
     }
 }

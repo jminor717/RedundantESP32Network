@@ -6,7 +6,10 @@ extern std::atomic<bool> CheckUDP;
 extern std::atomic<bool> CheckEthernet;
 extern std::atomic<bool> BroadcastUDP;
 extern std::atomic<bool> SendDataToControlRoom;
+extern std::atomic<bool> DHCPRefresh;
+extern std::atomic<bool> ACCRefresh;
 
 void startTimersNoPool();
+void startACCRefresh();
 void startTransmitingToControlroom();
 void startMeasuringTemp();

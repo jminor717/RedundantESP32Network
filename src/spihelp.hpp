@@ -26,8 +26,9 @@ public:
     static const uint8_t FIFO_STATUS = 0x39;
     std::atomic<bool> bufferFull{true};
     uint8_t interruptPin;
+    int64_t LastEmptyBuffer = 0;
     ADXL345_SPI(SPIClass *, uint8_t, uint8_t);
-    ADXL345_SPI(uint8_t, uint8_t);
+    ADXL345_SPI(SPIClass *, uint8_t, uint8_t,bool);
     void setupIntrupts();
     void init();
     /*
@@ -122,8 +123,6 @@ struct ADXLminibuffer
     size_t maxsize = 160;
     std::queue<acc, CyclicArray<acc, 160>> buffer;
 };
-
-void initilizeSpiBuss();
 
 void spiWriteSingleADXL(SPI_DEVICE, uint8_t, uint8_t);
 

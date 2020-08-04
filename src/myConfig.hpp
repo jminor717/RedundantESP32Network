@@ -12,7 +12,7 @@
 #define PrimarySPI_SCLK 21
 #define PrimarySPI_SS 19
 
-#define SecondarySPI_MISO 12
+#define SecondarySPI_MISO 12 //this needs to be changed inorder to run updates  https://www.esp32.com/viewtopic.php?t=3452
 #define SecondarySPI_MOSI 26
 #define SecondarySPI_SCLK 27
 #define SecondarySPI_SS -1
@@ -34,9 +34,12 @@
 #define DATA_TRANSMIT_ID 131
 #define POOL_DEVICE_TRANSMIT_ID  130
 #define MESSAGE_DELIMINER_CODE_ASCII 17//device code one used as deliminer in messages so any standard ascii char can be part of the message
+#define POOL_DEVICE_TIMEOUT 10*1000*1000 // time in micorseconds afterwich prior status data from one of the pool devices will be considered invalid
 
 #define ACC_BUFFER_SIZE 1600
 
-#define WIFIssid "ESP32-Access-Point"
-#define WIFIpassword "123456789"
+//#define WIFIssid "ESP32-Access-Point"
+#define WIFIssid "Pretty fly for a wifi"
+//#define WIFIpassword "123456789"
+#define WIFIpassword "JRMinor1!"
 #define WIFI_HOST "esp32"

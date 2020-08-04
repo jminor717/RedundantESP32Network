@@ -1,9 +1,18 @@
+<div id="buttons" style="height: 50px; width:100%;">
+    <button onclick="runUpdate()">enter update mode</button>
+</div>
 <div id="chartContainer" style="height: 370px; width:100%;"></div>
 <div id="chartContainer1" style="height: 370px; width:100%;"></div>
 <div id="chartContainer2" style="height: 370px; width:100%;"></div>
 <script src="node_modules\canvasjs\dist\canvasjs.min.js"></script>
 <script>
     //download canvas js from https://canvasjs.com/ and unpack into node modules folder
+    function runUpdate(){
+        console.log("runnig update")
+        fetch('/update')
+            .then(response => response.json())
+            .then(data => console.log(data));
+    }
     window.onload = function () {
 
         var dps = [], dps1 = [], dps2 = []; // dataPoints

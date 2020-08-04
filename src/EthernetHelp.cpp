@@ -2,6 +2,7 @@
 #include <Ethernet.h>
 #include <EthernetHelp.hpp>
 #include <myConfig.hpp>
+#include <version.h>
 //wifi
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -42,6 +43,12 @@ String loginIndex =
 //* Server Index Page
 String serverIndex =
     "<div id='d'>"
+    "<div style = margin: 0 auto;>" 
+    "current version:"
+    "</div>"
+    "<div style = margin: 0 auto;>" 
+    VERSION
+    "</div>"
     "<input type='file' name='update' id='file' onchange='sub(this,this.files[0])' style=display:none>"
     "<label id='file-input' for='file'>Choose file...</label>"
     "<input type='submit' class=btn value='Update' onclick='upload();'>"
@@ -105,7 +112,7 @@ void sendEthernetMessage(const char *msg, size_t length, IPAddress destination)
 void FowardDataToControlRoom(uint8_t *data, size_t DataLength, IPAddress ctrlRmAddress, uint16_t ctrlRmPort)
 {
     EthernetClient sendClient;
-    if (sendClient.connect(ctrlRmAddress, ctrlRmPort))
+    if (sendClient.connect(ctrlRmAddress, TCP_PORT))
     {
         sendClient.write(data, DataLength);
         sendClient.flush();
@@ -113,31 +120,14 @@ void FowardDataToControlRoom(uint8_t *data, size_t DataLength, IPAddress ctrlRmA
     }
     else
     {
-        Serial.println("TCP NOTTTT connected");
+        Serial.print("TCP NOTTTT connected  sdtcrlm: ");
+        Serial.println(sendClient.connected());
     }
 }
 
-void EthDebug(char *level, char *Msg, IPAddress ctrlRmAddress, uint16_t ctrlRmPort)
-{
-    EthernetClient sendClient;
-    if (sendClient.connect(ctrlRmAddress, ctrlRmPort))
-    {
-        sendClient.write(level);
-        sendClient.write(MESSAGE_DELIMINER_CODE_ASCII);
-        sendClient.write(Msg);
-        sendClient.flush();
-        sendClient.stop();
-    }
-    else
-    {
-        Serial.println("TCP NOTTTT connected");
-    }
-}
-
-IPAddress findOpenAdressAfterStart()
+IPAddress findOpenAdressAfterStart(IPAddress SelfAddress, IPAddress gateway, IPAddress subnet)
 {
     // initialize the ethernet device
-
     byte mac[6];
     if (WiFiGenericClass::getMode() == WIFI_MODE_NULL)
     {
@@ -147,12 +137,23 @@ IPAddress findOpenAdressAfterStart()
     {
         esp_wifi_get_mac(WIFI_IF_STA, mac);
     }
-    Serial.println("WiFi.macAddress()");
-    Serial.println(WiFi.macAddress());
-    byte mac2[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-    Ethernet.begin(mac2);
+    delay(100); //ensure ethernet module has time to initilize
+
+    if (Ethernet.begin(mac) == 0)
+    { // windows dhcp server can be found here https://www.dhcpserver.de/cms/running_the_server/
+        // use comand:  nmap --script broadcast-dhcp-discover    to make sure the dhcp server is working
+        Serial.println("Failed to configure Ethernet using DHCP");
+        Serial.println("Please reconfigure the settings and try again.");
+        // no point in carrying on, so do nothing forevermore:
+        while (true)
+            ;
+    }
+    else
+    {
+        Serial.println("Ethernet ready");
+    }
     // Check for Ethernet hardware present
-    Serial.println("fffff");
+
     if (Ethernet.hardwareStatus() == EthernetNoHardware)
     {
         Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
@@ -170,22 +171,28 @@ IPAddress findOpenAdressAfterStart()
 }
 
 //*Wifi
-void StartWifi()
+//void StartWifi(PoolManagment &fullpool)
+IPAddress StartWifi()
 {
+    IPAddress wifiadr;
     if (!inUpdateMode) //start wifi if it hasnt been already
     {
         inUpdateMode = true;
-        WiFi.softAP(WIFIssid, WIFIpassword);
-        /*   while (WiFi.status() != WL_CONNECTED)
+        //WiFi.softAP(WIFIssid, WIFIpassword);
+        WiFi.begin(WIFIssid, WIFIpassword);
+        //*
+        while (WiFi.status() != WL_CONNECTED)
         {
             delay(500);
             Serial.print(".");
-        }*/
-        Serial.println("");
-        Serial.print("Connected to ");
-        Serial.println(WIFIssid);
-        Serial.print("IP address: ");
-        Serial.println(WiFi.softAPIP());
+        }
+        Serial.println(""); //*/
+        char printbuffer[100];
+        // wifiadr = WiFi.softAPIP();
+        wifiadr = WiFi.localIP();
+        sprintf(printbuffer, " Connected to %s     IP address: %s", WIFIssid, wifiadr.toString().c_str());
+        Serial.println(printbuffer);
+        // fullpool.broadcastMessage(printbuffer);
         /*use mdns for host name resolution*/
         if (!MDNS.begin(WIFI_HOST))
         { //http://esp32.local
@@ -238,6 +245,12 @@ void StartWifi()
         } });
         WIFIserver.begin();
     }
+    else
+    {
+        //wifiadr = WiFi.softAPIP();
+        wifiadr = WiFi.localIP();
+    }
+    return wifiadr;
 }
 
 void endWifi()

@@ -1,4 +1,35 @@
 'use strict';
+/*
+var net = require('net');
+
+// Configuration parameters
+var HOST = '169.254.205.47';
+var PORT = 1602;
+
+// Create Server instance 
+var server = net.createServer(onClientConnected);
+
+server.listen(PORT, HOST, function () {
+    console.log('server listening on %j', server.address());
+});
+
+function onClientConnected(sock) {
+    var remoteAddress = sock.remoteAddress + ':' + sock.remotePort;
+    console.log('new client connected: %s', remoteAddress);
+    sock.write("dd");
+    sock.on('data', function (data) {
+        console.log('%s Says: %s', remoteAddress, data);
+        sock.write(data);
+        sock.write(' exit');
+    });
+    sock.on('close', function () {
+        console.log('connection from %s closed', remoteAddress);
+    });
+    sock.on('error', function (err) {
+        console.log('Connection %s error: %s', remoteAddress, err.message);
+    });
+};
+*/
 
 //npm install low-pass-filter -g
 var os = require('os');
@@ -32,6 +63,7 @@ class pooldev {
     IsMaster = false;
     Health = 0;
     RandomFactor = 0;
+    version ="";
     constructor(addrSTR) {
         let dat = addrSTR.split('.')
         for (let index = 0; index < dat.length; index++) {
@@ -82,7 +114,16 @@ class pooldev {
         this.RandomFactor += data[++i] << 8;
         this.RandomFactor += data[++i] << 16;
         this.RandomFactor += data[++i] << 24;
-        return ++i; //return data length 14
+
+        this.vote = !!data[++i];
+        let length = data.length -(i+1)
+        this.version ="";
+        for (let index = 0; index < length; index++) {
+            this.version += String.fromCharCode(data[++i]);
+            
+        }
+
+        return ++i; //return data length 15 + version length
     }
 }
 
@@ -142,23 +183,6 @@ function bin2String(array) {
     }
     return result;
 }
-
-
-
-
-
-
-// Include Nodejs' net module.
-const Net = require('net');
-
-// Use net.createServer() in your code. This is just for illustration purpose.
-// Create a new TCP server.
-const server = new Net.Server();
-// The server listens to a socket for a client to make a connection request.
-// Think of a socket as an end point.
-server.listen(tcpport, function () {
-    console.log(`Server listening for connection requests on socket localhost:${tcpport}`);
-});
 
 var accbufferAZ = [], accbufferEL = [], accbufferBAL = [], AZTEmpBuffer = [], ELTEmpBuffer = []
 
@@ -273,19 +297,30 @@ function parseBigData(buf) {
     accbufferBAL = accDataBAL
     AZTEmpBuffer = AZtempData
     ELTEmpBuffer = ELtempData
-
+    //console.log(`az${AZTEmpBuffer.length}   el${ELTEmpBuffer.length}    azacc${accbufferAZ.length}   elacc${accbufferEL.length}`)
 }
 
+// Include Nodejs' net module.
+const Net = require('net');
 
+// Use net.createServer() in your code. This is just for illustration purpose.
+// Create a new TCP server.
+const server = new Net.Server();
+// The server listens to a socket for a client to make a connection request.
+// Think of a socket as an end point.
+server.listen(tcpport, selfIP, function () {
+    console.log(`Server listening for tcp connection localhost: ${JSON.stringify(server.address())}`);
+});
 // When a client requests a connection with the server, the server creates a new
 // socket dedicated to that client.
 server.on('connection', function (socket) {
+    server.address();
     let bigdata = false;
-    let smalldata  =false;
+    let smalldata = false;
     let arr = Buffer.alloc(1);
     let expectedSize = -1;
     let parsed = false;
-    let adr =""
+    let adr = ""
     // The server can also receive data from the client by reading from its socket.
     socket.on('data', function (chunk) {
         //console.log(`Data received from client: ${chunk.length} bytes long`);
@@ -302,27 +337,33 @@ server.on('connection', function (socket) {
                 //console.log(arr);
                 if (!parsed) {
                     //console.log(`data connection established with ${expectedSize} expected bytes`);
-                    parseBigData(arr);
                     parsed = true;
+                    parseBigData(arr);
                 }
                 socket.end();
             }
-        } else if (smalldata){
+        } else if (smalldata) {
             arr = Buffer.concat([arr, chunk]);
-            console.log(arr);
+            //console.log(arr);
         }
         else if (chunk[0] === 131) {
             bigdata = true;
             arr = chunk;
             adr = socket.remoteAddress
+            if (expectedSize == -1 && arr.length > 11) {
+                expectedSize = arr[4]
+                expectedSize += (arr[3] << 8)
+                expectedSize += (arr[2] << 16)
+                expectedSize += (arr[1] << 24)
+            }
             //console.log(`data connection established with ${expectedSize} bytes of data first backet:${chunk.length}`);
         }
         else if (chunk[0] === selfDev.OBJID) {
             smalldata = true
             arr = chunk;
-            console.log(arr);
+            console.log(`tcp connect from ${socket.remoteAddress}`);
         } else {
-            console.log(`An unknown connection has been established chunk[0] ${chunk[0]}`);
+            console.log(`unknown connection ${chunk.length}`);
         }
         //socket.write('Acknoledge');
     });
@@ -331,17 +372,17 @@ server.on('connection', function (socket) {
     // ends the connection.
     socket.on('end', function () {
         //console.log(`Closing connection with the client with data length ${expectedSize} and array size ${arr.length}`);
-        /*  if (!parsed) {
+        if (!parsed && bigdata) {
+             parsed = true;
               parseBigData(arr);
-              parsed = true;
-          }*/
-          if(smalldata){
-              console.log(adr);
-              console.log(arr);
-              let dev1 = new pooldev(adr);
-              dev1.From_Transmition(arr);
-              console.log(dev1);
           }
+        if (smalldata) {
+            //console.log(adr);
+            //console.log(arr);
+            let dev1 = new pooldev(adr);
+            dev1.From_Transmition(arr);
+            console.log(dev1);
+        }
 
     });
 
@@ -373,19 +414,32 @@ function broadcastControlRoomDiscover() {
     UDP_Client.send(buf, 0, buf.length, UDPPORT, broadCastTarget);//"169.254.205.177"
 }
 
+function broadcastsetUpdateMode() {
+    let buf1 = Buffer.from("CONTROL", 'ascii');
+    var buf2 = Buffer.alloc(1);
+    buf2.writeUInt8(17, 0);
+    let buf3 = Buffer.from("SETUPDATE", 'ascii');
+    var buf4 = Buffer.alloc(1);
+    buf4.writeUInt8(17, 0);
+    let buf5 = Buffer.from("true", 'ascii');
+    var buf = Buffer.concat([buf1, buf2, buf3, buf4, buf5]);
+    UDP_Client.send(buf, 0, buf.length, UDPPORT, broadCastTarget);//"169.254.205.177"
+}
+
 UDP_Client.bind(function () {
     UDP_Client.setBroadcast(true)
     UDP_Client.setMulticastTTL(255);
-    broadcast = setInterval(broadcastNew, 2500);
-    controlRoomBroadcast = setInterval(broadcastControlRoomDiscover, 5000);
+    //broadcast = setInterval(broadcastNew, 2500);//esp32 sym
+    controlRoomBroadcast = setInterval(broadcastControlRoomDiscover, 2500);
 });
 
-const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
-socket.bind(UDPPORT);
+
+const UDPsocket = dgram.createSocket({ type: "udp4", reuseAddr: true });
+UDPsocket.bind(UDPPORT);
 //socket.bind(UDPPORT, selfIP);
-socket.on("listening", function () {
-    socket.addMembership(MULTICAST_ADDR);
-    const address = socket.address();
+UDPsocket.on("listening", function () {
+    UDPsocket.addMembership(MULTICAST_ADDR);
+    const address = UDPsocket.address();
     console.log(
         `UDP socket listening on ${address.address}:${address.port} pid: ${
         process.pid
@@ -394,61 +448,36 @@ socket.on("listening", function () {
 });
 
 
-socket.on("message", function (message, rinfo) {
-    
+UDPsocket.on("message", function (message, rinfo) {
+
     if (selfIP == rinfo.address) {
         return;
     }
-    message = bin2String(message);
-    console.log(message);
+    let strmessage = bin2String(message);
+
     //console.log(message)
-    if (message[0] === "DBG") {
-        console.info(`debug from: ${rinfo.address}:${rinfo.port} - ${message[1]}`);
+    if (strmessage[0] === "DBG") {
+        console.info(`debug from: ${rinfo.address}:${rinfo.port} - ${strmessage[1]}`);
         return;
     }
+    //console.log(message);
     var seen = false;
     recivedfrom.forEach(element => {
         if (element.address == rinfo.address) {
             seen = true;
-            setTimeout(() => {
-                clearInterval(broadcast)
-            }, 5000)
         }
     });
     //if (seen) return;
-    recivedfrom.push({ address: rinfo.address, lastFrom: new Date().getTime() })
-    console.info(`Message from: ${rinfo.address}:${rinfo.port} - ${message}`);
+    //console.info(`Message from: ${rinfo.address}:${rinfo.port} - ${message}`);
     if (seen) return;
-    var client = new Net.Socket();
-    client.connect(tcpport, rinfo.address, function () {
-        console.log('Connected UDP');
-        /*let buffer = new ArrayBuffer(258);
-        
-        let usernameView = new Uint8Array(buffer, 0, buffer.length);
-        for (let index = 0; index < usernameView.length; index++) {
-            usernameView[index] = index; "␇"
-        }
-        client.write(usernameView);
-        */
-        let z = selfDev.Transmit_Prep()
-        client.write(z);
-    });
-
-    client.on('data', function (data) {
-        console.log('Received: ' + data);
-        client.destroy(); // kill client after server's response
-    });
-
-    client.on('close', function () {
-        console.log('Connection closed');
-    });
+    recivedfrom.push({ address: rinfo.address, lastFrom: new Date().getTime() })
 });
 
-//*
 
 var fs = require('fs');
 var path = require('path');
 var http = require('http');
+const { Console } = require('console');
 
 //create a server object:
 http.createServer(function (request, response) {
@@ -462,8 +491,10 @@ http.createServer(function (request, response) {
         response.end(respstr, 'utf-8');
     }
     else if (request.url == '/update') {
-        console.log(request);
-        response.end("respstr", 'utf-8');
+        //console.log(request);
+        broadcastsetUpdateMode();
+        response.end(JSON.stringify(recivedfrom), 'utf-8');
+        //        response.end(JSON.stringify({ lol:'🧠'}));
     }
     else {
         if (filePath == './')
