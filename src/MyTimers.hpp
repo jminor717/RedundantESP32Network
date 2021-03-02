@@ -13,3 +13,7 @@ void startTimersNoPool();
 void startACCRefresh();
 void startTransmitingToControlroom();
 void startMeasuringTemp();
+
+void stopACCRefresh();
+void stopTransmitingToControlroom();
+void stopMeasuringTemp();

@@ -123,7 +123,6 @@ struct ADXLminibuffer
     size_t maxsize = 160;
     std::queue<acc, CyclicArray<acc, 160>> buffer;
 };
-
 void spiWriteSingleADXL(SPI_DEVICE, uint8_t, uint8_t);
 
 uint8_t spiReadSingleADXL(SPI_DEVICE, uint8_t);

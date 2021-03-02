@@ -1,37 +1,5 @@
 'use strict';
-/*
-var net = require('net');
 
-// Configuration parameters
-var HOST = '169.254.205.47';
-var PORT = 1602;
-
-// Create Server instance 
-var server = net.createServer(onClientConnected);
-
-server.listen(PORT, HOST, function () {
-    console.log('server listening on %j', server.address());
-});
-
-function onClientConnected(sock) {
-    var remoteAddress = sock.remoteAddress + ':' + sock.remotePort;
-    console.log('new client connected: %s', remoteAddress);
-    sock.write("dd");
-    sock.on('data', function (data) {
-        console.log('%s Says: %s', remoteAddress, data);
-        sock.write(data);
-        sock.write(' exit');
-    });
-    sock.on('close', function () {
-        console.log('connection from %s closed', remoteAddress);
-    });
-    sock.on('error', function (err) {
-        console.log('Connection %s error: %s', remoteAddress, err.message);
-    });
-};
-*/
-
-//npm install low-pass-filter -g
 var os = require('os');
 var ifaces = os.networkInterfaces();
 var selfIP = "169.254.205.47";
@@ -44,7 +12,6 @@ const UDPPORT = 8888;
 
 const tcpport = 1602;
 var recivedfrom = []
-var broadcast;
 var controlRoomBroadcast;
 
 
@@ -414,11 +381,26 @@ function broadcastControlRoomDiscover() {
     UDP_Client.send(buf, 0, buf.length, UDPPORT, broadCastTarget);//"169.254.205.177"
 }
 
-function broadcastsetUpdateMode() {
+function broadcastsetUpdateMode(value) {
     let buf1 = Buffer.from("CONTROL", 'ascii');
     var buf2 = Buffer.alloc(1);
     buf2.writeUInt8(17, 0);
     let buf3 = Buffer.from("SETUPDATE", 'ascii');
+    var buf4 = Buffer.alloc(1);
+    buf4.writeUInt8(17, 0);
+    let buf5 = Buffer.from("true", 'ascii');
+    if(!value){
+        buf5 = Buffer.from("false", 'ascii');
+    }
+    var buf = Buffer.concat([buf1, buf2, buf3, buf4, buf5]);
+    UDP_Client.send(buf, 0, buf.length, UDPPORT, broadCastTarget);//"169.254.205.177"
+}
+
+function broadcastReeboot() {
+    let buf1 = Buffer.from("CONTROL", 'ascii');
+    var buf2 = Buffer.alloc(1);
+    buf2.writeUInt8(17, 0);
+    let buf3 = Buffer.from("REBOOT", 'ascii');
     var buf4 = Buffer.alloc(1);
     buf4.writeUInt8(17, 0);
     let buf5 = Buffer.from("true", 'ascii');
@@ -429,7 +411,6 @@ function broadcastsetUpdateMode() {
 UDP_Client.bind(function () {
     UDP_Client.setBroadcast(true)
     UDP_Client.setMulticastTTL(255);
-    //broadcast = setInterval(broadcastNew, 2500);//esp32 sym
     controlRoomBroadcast = setInterval(broadcastControlRoomDiscover, 2500);
 });
 
@@ -492,9 +473,19 @@ http.createServer(function (request, response) {
     }
     else if (request.url == '/update') {
         //console.log(request);
-        broadcastsetUpdateMode();
+        broadcastsetUpdateMode(true);
         response.end(JSON.stringify(recivedfrom), 'utf-8');
         //        response.end(JSON.stringify({ lol:'🧠'}));
+    }
+    else if (request.url == '/stop_update') {
+        //console.log(request);
+        broadcastsetUpdateMode(false);
+        response.end(JSON.stringify(recivedfrom), 'utf-8');
+    }
+    else if (request.url == '/reboot') {
+        //console.log(request);
+        broadcastReeboot();
+        response.end(JSON.stringify(recivedfrom), 'utf-8');
     }
     else {
         if (filePath == './')

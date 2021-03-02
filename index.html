@@ -1,15 +1,31 @@
-<div id="buttons" style="height: 50px; width:100%;">
+<div style="display: inline-block; *display: inline; zoom: 1; vertical-align: top;">
     <button onclick="runUpdate()">enter update mode</button>
+    <button onclick="stopUpdate()">leave update mode</button>
+    <button onclick="rebootAll()">reboot all esp32's</button>
 </div>
+
+
 <div id="chartContainer" style="height: 370px; width:100%;"></div>
 <div id="chartContainer1" style="height: 370px; width:100%;"></div>
 <div id="chartContainer2" style="height: 370px; width:100%;"></div>
 <script src="node_modules\canvasjs\dist\canvasjs.min.js"></script>
 <script>
     //download canvas js from https://canvasjs.com/ and unpack into node modules folder
-    function runUpdate(){
+    function runUpdate() {
         console.log("runnig update")
         fetch('/update')
+            .then(response => response.json())
+            .then(data => console.log(data));
+    }
+    function stopUpdate() {
+        console.log("stopping update")
+        fetch('/stop_update')
+            .then(response => response.json())
+            .then(data => console.log(data));
+    }
+    function rebootAll() {
+        console.log("stopping update")
+        fetch('/reboot')
             .then(response => response.json())
             .then(data => console.log(data));
     }
@@ -17,7 +33,7 @@
 
         var dps = [], dps1 = [], dps2 = []; // dataPoints
         var dpsEL = [], dps1EL = [], dps2EL = []; // dataPoints
-        var dpsBAL = [], dps1BAL = [], dps2BAL = []; // dataPoints
+        var AZTEMP = [], ELTEMP = []; // dataPoints
         var chart = new CanvasJS.Chart("chartContainer", {
             title: {
                 text: "AZ ACC"
@@ -58,21 +74,18 @@
         });
         var chartBAL = new CanvasJS.Chart("chartContainer2", {
             title: {
-                text: "BAL ACC"
+                text: "temperature"
             },
             axisY: {
                 includeZero: true
             },
             data: [{
                 type: "line",
-                dataPoints: dpsBAL
+                dataPoints: AZTEMP
             },
             {
                 type: "line",
-                dataPoints: dps1BAL
-            }, {
-                type: "line",
-                dataPoints: dps2BAL
+                dataPoints: ELTEMP
             }]
         });
 
@@ -119,19 +132,15 @@
                     xValEL++;
                 }
 
-                l = data.ACCBAL.length;
+                l = data.AZT.length;
                 for (var j = 0; j < l; j++) {
-                    dpsBAL.push({
+                    AZTEMP.push({
                         x: xValBAL,
-                        y: data.ACCBAL[j].x
+                        y: data.AZT[j]
                     });
-                    dps1BAL.push({
+                    ELTEMP.push({
                         x: xValBAL,
-                        y: data.ACCBAL[j].y
-                    });
-                    dps2BAL.push({
-                        x: xValBAL,
-                        y: data.ACCBAL[j].z
+                        y: data.ELT[j]
                     });
                     xValBAL++;
                 }
@@ -151,12 +160,10 @@
                 while (dps2EL.length > dataLength)
                     dps2EL.shift();
 
-                while (dpsBAL.length > dataLength)
-                    dpsBAL.shift();
-                while (dps1BAL.length > dataLength)
-                    dps1BAL.shift();
-                while (dps2BAL.length > dataLength)
-                    dps2BAL.shift();
+                while (AZTEMP.length > 250)
+                    AZTEMP.shift();
+                while (ELTEMP.length > 250)
+                    ELTEMP.shift();
 
                 chart.render();
                 chartEL.render();

@@ -17,11 +17,11 @@ bool inUpdateMode = false;
 //* Style
 String style =
     "<style>#file-input,input{width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px}"
-    "input{background:#f1f1f1;border:0;padding:0 15px}body{background:#3498db;font-family:sans-serif;font-size:14px;color:#777}"
+    "input{background:#f1f1f1;border:0;padding:0 15px}body{background:darkred;font-family:sans-serif;font-size:14px;color:#777}"
     "#file-input{padding:0;border:1px solid #ddd;line-height:44px;text-align:left;display:block;cursor:pointer}"
-    "#bar,#prgbar{background-color:#f1f1f1;border-radius:10px}#bar{background-color:#3498db;width:0%;height:10px}"
+    "#bar,#prgbar{background-color:#f1f1f1;border-radius:10px}#bar{background-color:darkred;width:0%;height:10px}"
     "#d{background:#fff;max-width:258px;margin:75px auto;padding:30px;border-radius:5px;text-align:center}"
-    ".btn{background:#3498db;color:#fff;cursor:pointer}</style>";
+    ".btn{background:darkred;color:#fff;cursor:pointer}</style>";
 
 //* Login page
 String loginIndex =
@@ -43,11 +43,10 @@ String loginIndex =
 //* Server Index Page
 String serverIndex =
     "<div id='d'>"
-    "<div style = margin: 0 auto;>" 
+    "<div style = margin: 0 auto;>"
     "current version:"
     "</div>"
-    "<div style = margin: 0 auto;>" 
-    VERSION
+    "<div style = margin: 0 auto;>" VERSION
     "</div>"
     "<input type='file' name='update' id='file' onchange='sub(this,this.files[0])' style=display:none>"
     "<label id='file-input' for='file'>Choose file...</label>"
@@ -145,8 +144,9 @@ IPAddress findOpenAdressAfterStart(IPAddress SelfAddress, IPAddress gateway, IPA
         Serial.println("Failed to configure Ethernet using DHCP");
         Serial.println("Please reconfigure the settings and try again.");
         // no point in carrying on, so do nothing forevermore:
-        while (true)
-            ;
+        Serial.println("REBOOTING...");
+        delay(3000);
+        ESP.restart();
     }
     else
     {

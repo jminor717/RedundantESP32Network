@@ -99,11 +99,11 @@ void startTimersNoPool()
 {
     Serial.println("start timers for non master");
     xTimers[CheckUDP_id] = xTimerCreate("CheckUDP", CheckUDPTicks, pdTRUE, (void *)CheckUDP_id, TimerCallback);
-    xTimers[CheckEthernet_id] = xTimerCreate("CheckEthernet", CheckEthernetTicks, pdTRUE, (void *)CheckEthernet_id, TimerCallback);
+    //xTimers[CheckEthernet_id] = xTimerCreate("CheckEthernet", CheckEthernetTicks, pdTRUE, (void *)CheckEthernet_id, TimerCallback);
     xTimers[BroadcastUDP_id] = xTimerCreate("BroadcastUDP", BroadcastUDPTicks, pdTRUE, (void *)BroadcastUDP_id, TimerCallback);
     xTimers[DHCPRefresh_id] = xTimerCreate("DCHPrefresh", DHCPRefreshTicks, pdTRUE, (void *)DHCPRefresh_id, TimerCallback);
     StartMyTimer(xTimers[CheckUDP_id]);
-    StartMyTimer(xTimers[CheckEthernet_id]);
+    //StartMyTimer(xTimers[CheckEthernet_id]);
     StartMyTimer(xTimers[BroadcastUDP_id]);
     StartMyTimer(xTimers[DHCPRefresh_id]);
 }
@@ -114,7 +114,8 @@ void startTransmitingToControlroom()
     StartMyTimer(xTimers[SendDataToControlRoom_id]);
 }
 
-void startACCRefresh(){
+void startACCRefresh()
+{
     xTimers[ACCRefresh_id] = xTimerCreate("ACCRefresh", ACCRefreshTicks, pdTRUE, (void *)ACCRefresh_id, TimerCallback);
     StartMyTimer(xTimers[ACCRefresh_id]);
 }
@@ -125,4 +126,18 @@ void startMeasuringTemp()
     xTimers[EL_id] = xTimerCreate("MeasureELTemp", MeasureELTempTicks, pdTRUE, (void *)EL_id, TimerCallback);
     StartMyTimer(xTimers[AZ_id]);
     StartMyTimer(xTimers[EL_id]);
+}
+
+void stopACCRefresh()
+{
+    xTimerStop(xTimers[ACCRefresh_id], 0);
+}
+void stopTransmitingToControlroom()
+{
+    xTimerStop(xTimers[SendDataToControlRoom_id], 0);
+}
+void stopMeasuringTemp()
+{
+    xTimerStop(xTimers[AZ_id], 0);
+    xTimerStop(xTimers[EL_id], 0);
 }

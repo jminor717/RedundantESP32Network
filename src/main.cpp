@@ -102,7 +102,7 @@ int tem = 0;
 void loop()
 {
 
-    char data2[30];
+   /* char data2[30];
     if (CheckEthernet)
     {
         CheckEthernet = false;
@@ -120,35 +120,22 @@ void loop()
                 uint8_t data[bytes] = {0};
                 ptr = data;
                 client.read(ptr, bytes);
-                //int len = processOneTimeConnection(client, bytes, data, Serial);
-                //if (len == -1 || len == -2)
-                // {
-                //client.
+                
                 //char msg[bytes];
-                /* for (int j = 0; j < bytes; j++)
-                {
-                    msg[j] = (char)data[j];
-                    Serial.print(data[j]);
-                    Serial.print("  ");
-                    Serial.println(msg[j]);
-                }*/
+                //for (int j = 0; j < bytes; j++)
+                //{
+                //    msg[j] = (char)data[j];
+                //}
                 Serial.print("message is bytes long");
                 Serial.println(bytes);
-
-                //client.write("acknoledge");
-                // give time to receive the data
-                //delay(2);
-                // close the connection:
-                //client.stop();
-                //  }
             }
         }
-    }
+    }*/
     if (fullpool.self.IsMaster)
     {
         if (accSPI_AZ->bufferFull)
         {
-            Serial.print("A");
+            //Serial.print("A");
             accSPI_AZ->bufferFull = false;
             accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_AZ);
             for (size_t i = 0; i < buffer.lenght; i++)
@@ -159,7 +146,7 @@ void loop()
         }
         if (accSPI_EL->bufferFull)
         {
-            Serial.print("E");
+            //Serial.print("E");
             accSPI_EL->bufferFull = false;
             accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_EL);
             for (size_t i = 0; i < buffer.lenght; i++)
@@ -170,7 +157,7 @@ void loop()
         }
         if (accSPI_Ballence->bufferFull)
         {
-            Serial.print("B");
+            //Serial.print("B");
             accSPI_Ballence->bufferFull = false;
             accbuffer buffer = emptyAdxlBuffer((SPI_DEVICE)*accSPI_Ballence);
             for (size_t i = 0; i < buffer.lenght; i++)
@@ -192,7 +179,7 @@ void loop()
         {
             AZTempBuf[AZTempBufSize++] = sssss;
         }
-        sprintf(data2, "AZ: %d", sssss);
+        //sprintf(data2, "AZ: %d", sssss);
         //!    fullpool.broadcastMessage(data2);
     }
     if (measureELTemp)
@@ -207,7 +194,7 @@ void loop()
         {
             ELTempBuf[ELTempBufSize++] = sssss;
         }
-        sprintf(data2, "EL: %d", sssss);
+        //sprintf(data2, "EL: %d", sssss);
         //!    fullpool.broadcastMessage(data2);
     }
     if (CheckUDP)
@@ -261,8 +248,8 @@ void loop()
                 {
                     vote = fullpool.self.Health > dev->Health;
                 }
-                // sprintf(printbuffer, "dev %s, rf: %u, vote: %u, ismat: %u, myrf: %u", dev->Address.toString().c_str(), dev->RandomFactor, vote, dev->IsMaster, fullpool.self.RandomFactor);
-                //!     fullpool.broadcastMessage(printbuffer);
+                sprintf(printbuffer, "dev %s, rf: %u, vote: %u, ismat: %u, myrf: %u", dev->Address.toString().c_str(), dev->RandomFactor, vote, dev->IsMaster, fullpool.self.RandomFactor);
+                fullpool.broadcastMessage(printbuffer);
                 if (dev->IsMaster)
                 {
                     vote = false;
@@ -273,19 +260,14 @@ void loop()
                 }
                 else
                 {
-                    //sprintf(printbuffer, "i was voted for by:  %s ", dev->Address.toString().c_str());
-                    //!      fullpool.broadcastMessage(printbuffer);
+                    sprintf(printbuffer, "i was voted for by:  %s ", dev->Address.toString().c_str());
+                    fullpool.broadcastMessage(printbuffer);
                 }
             }
             if (isMaster)
             {
-                //pinMode(SecondarySPI_MISO, INPUT);
                 fullpool.broadcastMessage("i have been elected master");
-                /*gpio_set_level(GPIO_NUM_27, 0);
-                delayMicroseconds(20);
-                gpio_set_level(GPIO_NUM_27, 1);
-                delayMicroseconds(20);
-                gpio_set_level(GPIO_NUM_27, 0);*/
+
                 SecondarySPI = new SPIClass(HSPI); //VSPI ,HSPI
                 //SCLK = 14, MISO = 12, MOSI = 13, SS = 15
                 SecondarySPI->begin(SecondarySPI_SCLK, SecondarySPI_MISO, SecondarySPI_MOSI, SecondarySPI_SS);
@@ -357,10 +339,11 @@ void loop()
     if (ACCRefresh)
     {
         ACCRefresh = false;
-        Serial.println("refreshing ACC");
+        
         int64_t now = esp_timer_get_time();
         if ((now - 10000) > accSPI_EL->LastEmptyBuffer)
         {
+            Serial.println("refreshing ACC");
             accSPI_EL->bufferFull = true;
         }
         if ((now - 10000) > accSPI_AZ->LastEmptyBuffer)

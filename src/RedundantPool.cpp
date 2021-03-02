@@ -208,6 +208,11 @@ void PoolManagment::CheckUDPServer()
                         }
                     }
                 }
+                if (comand.equals("REBOOT"))
+                {
+                    this->broadcastMessage("REBOOTING...");
+                    ESP.restart();
+                }
                 return;
             }
         }

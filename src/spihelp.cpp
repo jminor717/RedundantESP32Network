@@ -145,14 +145,6 @@ accbuffer emptyAdxlBuffer(SPI_DEVICE dev)
     dev.Buss->transferBytes(IN, outBuff, 2);
     digitalWrite(dev.cs_Line, HIGH);
     uint8_t fifolength = outBuff[1];
-    Serial.print("|");
-    Serial.print(IN[0]);
-    Serial.print("|");
-    Serial.print(IN[1]);
-    Serial.print("|");
-    Serial.print(outBuff[0]);
-    Serial.print("|");
-    Serial.println(fifolength);
     if (fifolength > 32)
     {
         buf.lenght = 0;
